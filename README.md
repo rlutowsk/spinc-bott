@@ -1,1 +1,1 @@
-# spinc-bott
+# Counting spinc structures on real Bott manifolds
