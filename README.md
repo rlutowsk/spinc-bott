@@ -16,7 +16,7 @@ Simply type `make`.
 
 After compiling, you may use the following switches:
 
-	-d: with argument being the dimension you want to check
-	-j: with argument being number of threads to use
-	-v: increase communicates that are printed after job is done
-	-h: show short help 
+`-d`: with argument being the dimension you want to check  
+`-j`: with argument being number of threads to use  
+`-v`: increase communicates that are printed after job is done  
+`-h`: show short help  
