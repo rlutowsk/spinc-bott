@@ -1,6 +1,6 @@
 # Counting spinc structures on real Bott manifolds
 
-The applications counts the numbers of real Bott manifolds with spinc and spin structures in given dimension.
+The applications counts the numbers of real Bott manifolds with spinc and spin structures in dimensions from **3 to 10**.
 
 ## Requirements
 
