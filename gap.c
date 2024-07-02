@@ -131,19 +131,31 @@ Obj BottIsSpin(Obj self)
     return (is_spin(mat, dim))?True:False;
 }
 
+Obj BottLastNonzeroRow(Obj self)
+{
+    ind_t c;
+    for (c=dim-1; c>=0; c--) {
+        if (mat[c]>0) {
+            return INTOBJ_INT(c+1);
+        }
+    }
+    return Fail;
+}
+
 /* 
  * GVarFunc - list of functions to export
  */
 static StructGVarFunc GVarFunc[] = {
-    { "BottInit" ,     1, "dim"   , BottInit     , "bott.c:BottInit"     },
-    { "BottClear",     0, ""          , BottClear    , "bott.c:BottClear"    },
-    { "BottPrint",     0, ""          , BottPrint    , "bott.c:BottPrint"    },
-    { "BottMat"  ,     0, ""          , BottMat      , "bott.c:BottMat"      },
-    { "BottNext" ,     0, ""          , BottNext     , "bott.c:BottNext"     },
-    { "BottSetState" , 1, "state"     , BottSetState , "bott.c:BottSetState" },
-    { "BottGetState" , 0, ""          , BottGetState , "bott.c:BottGetState" },
-    { "BottIsSpinc"  , 0, ""          , BottIsSpinc  , "bott.c:BottIsSpinc"  },
-    { "BottIsSpin"   , 0, ""          , BottIsSpin   , "bott.c:BottIsSpin"   },
+    { "BottInit"          , 1, "dim"   , BottInit           , "bott.c:BottInit" },
+    { "BottClear"         , 0, ""      , BottClear          , "bott.c:BottClear" },
+    { "BottPrint"         , 0, ""      , BottPrint          , "bott.c:BottPrint" },
+    { "BottMat"           , 0, ""      , BottMat            , "bott.c:BottMat" },
+    { "BottNext"          , 0, ""      , BottNext           , "bott.c:BottNext" },
+    { "BottSetState"      , 1, "state" , BottSetState       , "bott.c:BottSetState" },
+    { "BottGetState"      , 0, ""      , BottGetState       , "bott.c:BottGetState" },
+    { "BottIsSpinc"       , 0, ""      , BottIsSpinc        , "bott.c:BottIsSpinc" },
+    { "BottIsSpin"        , 0, ""      , BottIsSpin         , "bott.c:BottIsSpin" },
+    { "BottLastNonzeroRow", 0, ""      , BottLastNonzeroRow , "bott.c:BottLastNonzeroRow" },
     { 0 }
 };
 
