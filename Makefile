@@ -1,12 +1,12 @@
 CFLAGS := -Wall -O3 -fopenmp -ffast-math -march=native
 
-all: bott
+all: count
 
 debug: CFLAGS := -Wall -g -fopenmp
-debug: bott
+debug: all
 
-bott: bott.c
-	gcc -o bott bott.c $(CFLAGS)
+count: count.c
+	gcc -o count count.c $(CFLAGS)
 
 clean:
-	@rm bott
+	@rm count
