@@ -33,18 +33,12 @@ inline vec_t get_max_state(ind_t dim)
     return max_state - 1;
 }
 
-struct result {
-    size_t spinc;
-    size_t spin;
-};
-
 /*
  * cdim - current dimension
  * ddim - destination dimension
 */
-size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim)
+size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t *spinc, size_t *spin)
 {
-    size_t spinc = 0;
     vec_t max = 1<<(cdim-2);
     vec_t r;
     vec_t row;
@@ -54,7 +48,8 @@ size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim)
         for (r = 0; r<max; r++) {
             mat[0] = cache[r];
             if (is_spinc(mat, ddim)) {
-                spinc++;
+                *spinc += 1;
+                *spin += is_spin(mat, ddim);
             }
         }
     }
@@ -64,11 +59,11 @@ size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim)
         for (r=0; r<max; r++) {
             mat[row] = cache[r];
             if (is_spinc(&mat[row], cdim)) {
-                spinc += backtrack(mat, cache, cdim+1, ddim);
+                backtrack(mat, cache, cdim+1, ddim, spinc, spin);
             }
         }
     }
-    return spinc;
+    return *spinc;
 }
 
 int main(int argc, char *argv[])
@@ -79,8 +74,8 @@ int main(int argc, char *argv[])
     ind_t sdim = 4, dim = 6, j=16;
     vec_t *mat, *cache = NULL;
     /* state is a number which is used to generate RBM matrix */
-    vec_t state, max_state;
-    size_t spinc, spin;
+    vec_t state, max_state, row;
+    size_t spinc, spin, a, b, bits;
     size_t cache_size;
     while ((opt = getopt(argc, argv, "vhj:d:s:")) != -1) {
         switch (opt) {
@@ -119,19 +114,25 @@ int main(int argc, char *argv[])
 
     max_state = get_max_state(sdim);
 
-    spinc = 0;
     tic();
-    #pragma omp parallel private (mat) shared(cache, dim, max_state)
+    row = dim-sdim;
+    bits= __WORDSIZE*row;
+    #pragma omp parallel default(none) private(mat, a, b) shared(cache, max_state, dim, sdim, row, bits, spinc, spin)
     {
         spinc = 0;
         spin  = 0;
         mat   = init(dim);
         #pragma omp for reduction(+:spinc,spin) //schedule(static)
         for (state=0; state<=max_state; state++) {
-            set(mat, cache, state, dim);
-            if (is_spinc(mat, dim)) {
-                spinc += backtrack(mat, cache, sdim+1, dim);
+            memset(mat, 0, bits);
+            set(&mat[row], cache, state, sdim);
+            a = 0;
+            b = 0;
+            if (is_spinc(&mat[row], sdim)) {
+                backtrack(mat, cache, sdim+1, dim, &a, &b);
             }
+            spinc+= a;
+            spin += b;
         }
         free(mat);
     }
