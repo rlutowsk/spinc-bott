@@ -1,4 +1,5 @@
 count
+backtrack
 *.lo
 *.o
 *.so
