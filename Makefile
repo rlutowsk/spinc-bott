@@ -1,28 +1,43 @@
 CFLAGS := -Wall -O3 -fopenmp -ffast-math -march=native -I.
 
-TARGETS := count backtrack gap.so
+SRC := count.c backtrack.c backtrack1.c
+APP := $(patsubst %.c, %, $(SRC)) 
+LIB := gap.so
+TARGETS := $(APP) $(LIB)
 OBJ  := bott.o
 LOBJ := bott.lo
 
+CC = gcc
+GAC = gac
+
 all: $(TARGETS)
 
-debug: CFLAGS := -Wall -g -fopenmp
+debug: CFLAGS := -Wall -g -fopenmp -O0
 debug: all
 
-count: count.c $(OBJ)
-	gcc -o count count.c $(CFLAGS) bott.o
+$(APP): $(SRC) $(OBJ)
+	$(CC) -o $@ $@.c $(CFLAGS) $(OBJ)
 
-backtrack: backtrack.c $(OBJ)
-	gcc -o backtrack backtrack.c $(CFLAGS) bott.o
+#count: count.c $(OBJ)
+#	gcc -o count count.c $(CFLAGS) bott.o
+#
+#backtrack: backtrack.c $(OBJ)
+#	gcc -o backtrack backtrack.c $(CFLAGS) bott.o
 
-bott.o: bott.c bott.h
-	gcc -c -o bott.o bott.c $(CFLAGS)
+%.o: %.c %.h
+	$(CC) -o $@ $< -c $(CFLAGS)
 
-bott.lo: bott.c
-	gac -p "$(CFLAGS)" -c bott.c -o bott.lo
+#bott.o: bott.c bott.h
+#	gcc -c -o bott.o bott.c $(CFLAGS)
 
-gap.so: gap.c $(LOBJ)
-	gac -d gap.c -o gap.so -p "$(CFLAGS)" -L "bott.lo"
+#bott.lo: bott.c
+#	gac -p "$(CFLAGS)" -c bott.c -o bott.lo
+
+%.lo: %.c %.h
+	$(GAC) -o $@ $< -c -p "$(CFLAGS)"
+
+%.so: %.c $(LOBJ)
+	$(GAC) -d $< -o $@ -p "$(CFLAGS)" -L "$(LOBJ)"
 
 clean:
 	@rm $(wildcard $(TARGETS) $(OBJ) $(LOBJ))

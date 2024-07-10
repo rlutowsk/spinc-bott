@@ -44,7 +44,7 @@ void set(vec_t *mat, const vec_t *cache, const vec_t state, const ind_t dim)
     }
 }
 
-inline int equal_cols(const vec_t *mat, const ind_t dim, const ind_t i, const ind_t j)
+static inline int equal_cols(const vec_t *mat, const ind_t dim, const ind_t i, const ind_t j)
 {
     vec_t mask = (1<<(dim-i-1)) ^ (1<<(dim-j-1));
     ind_t r;
@@ -56,7 +56,7 @@ inline int equal_cols(const vec_t *mat, const ind_t dim, const ind_t i, const in
     return 1;
 }
 
-inline vec_t scalar_product(const vec_t v1, const vec_t v2)
+static inline vec_t scalar_product(const vec_t v1, const vec_t v2)
 {
     return __builtin_parityl(v1&v2);
 }
@@ -89,7 +89,7 @@ size_t is_spinc(const vec_t *mat, const ind_t dim)
     return 1;
 }
 
-inline int row_sum(vec_t r)
+static inline int row_sum(vec_t r)
 {
     return __builtin_popcountl(r);
 }

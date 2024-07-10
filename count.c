@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     vec_t *mat, *cache = NULL;
     /* state is a number which is used to generate RBM matrix */
     vec_t state, max_state;
-    size_t spinc, spin;
+    size_t spinc, spin, a, b;
     size_t cache_size;
     while ((opt = getopt(argc, argv, "vhj:d:")) != -1) {
         switch (opt) {
@@ -60,21 +60,24 @@ int main(int argc, char *argv[])
     populate_cache(&cache, &cache_size, dim);
 
     spinc = 0;
+    spin  = 0;
     tic();
-    #pragma omp parallel private (mat) shared(cache, dim, max_state)
+    #pragma omp parallel default(none) private (mat, a, b) shared(cache, dim, max_state) reduction(+:spin,spinc)
     {
-        spinc = 0;
-        spin  = 0;
         mat   = init(dim);
-        #pragma omp for reduction(+:spinc,spin) schedule(static)
+        a = 0;
+        b = 0;
+        #pragma omp for
         for (state=0; state<=max_state; state++) {
             set(mat, cache, state, dim);
             if (is_spinc(mat, dim)) {
-                spinc++;
-                spin += is_spin(mat, dim);
+                a++;
+                b += is_spin(mat, dim);
             }
         }
         free(mat);
+        spinc += a;
+        spin  += b;
     }
     time = toc();
 
