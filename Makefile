@@ -1,6 +1,6 @@
 CFLAGS := -Wall -O3 -fopenmp -ffast-math -march=native -I.
 
-SRC := count.c backtrack.c backtrack1.c
+SRC := count.c backtrack.c
 APP := $(patsubst %.c, %, $(SRC)) 
 LIB := gap.so
 TARGETS := $(APP) $(LIB)
