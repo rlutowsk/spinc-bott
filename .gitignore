@@ -1,5 +1,6 @@
 count
-backtrack
+backtrack*
 *.lo
 *.o
 *.so
+!*.c
