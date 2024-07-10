@@ -23,7 +23,7 @@ void help(const char *name)
     fprintf(stderr, "-v: be verbose\n");
 }
 
-inline vec_t get_max_state(ind_t dim)
+static inline vec_t get_max_state(ind_t dim)
 {
     ind_t c;
     vec_t max_state;
@@ -41,21 +41,20 @@ size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t 
 {
     vec_t max = 1<<(cdim-2);
     vec_t r;
-    vec_t row;
+    vec_t row = ddim-cdim;
 
-    if (cdim==ddim) {
+    if (row==0) {
         /* final step */
         for (r = 0; r<max; r++) {
             mat[0] = cache[r];
             if (is_spinc(mat, ddim)) {
                 *spinc += 1;
-                *spin += is_spin(mat, ddim);
+                *spin  += is_spin(mat, ddim);
             }
         }
     }
     else {
         /* recursive call */
-        row = ddim-cdim;
         for (r=0; r<max; r++) {
             mat[row] = cache[r];
             if (is_spinc(&mat[row], cdim)) {
@@ -75,7 +74,7 @@ int main(int argc, char *argv[])
     vec_t *mat, *cache = NULL;
     /* state is a number which is used to generate RBM matrix */
     vec_t state, max_state, row;
-    size_t spinc, spin, a, b, bits;
+    size_t spinc, spin, a, b;
     size_t cache_size;
     while ((opt = getopt(argc, argv, "vhj:d:s:")) != -1) {
         switch (opt) {
@@ -116,25 +115,24 @@ int main(int argc, char *argv[])
 
     tic();
     row = dim-sdim;
-    bits= __WORDSIZE*row;
-    #pragma omp parallel default(none) private(mat, a, b) shared(cache, max_state, dim, sdim, row, bits, spinc, spin)
+    spinc = 0;
+    spin  = 0;
+    #pragma omp parallel default(none) private(mat, a, b) shared(cache, max_state, dim, sdim, row) reduction(+:spinc,spin)
     {
-        spinc = 0;
-        spin  = 0;
+        a = 0;
+        b = 0;    
         mat   = init(dim);
-        #pragma omp for reduction(+:spinc,spin) //schedule(static)
+        #pragma omp for //schedule(static)
         for (state=0; state<=max_state; state++) {
-            memset(mat, 0, bits);
+            //memset(mat, 0, bits);
             set(&mat[row], cache, state, sdim);
-            a = 0;
-            b = 0;
             if (is_spinc(&mat[row], sdim)) {
                 backtrack(mat, cache, sdim+1, dim, &a, &b);
             }
-            spinc+= a;
-            spin += b;
         }
         free(mat);
+        spinc+= a;
+        spin += b;
     }
     time = toc();
 
