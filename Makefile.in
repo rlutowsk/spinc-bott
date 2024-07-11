@@ -12,10 +12,10 @@ GAC = gac
 
 all: $(TARGETS)
 
-debug: CFLAGS := -I. -g -O0 @OPENMP_CFLAGS@ @WARNINGS@ -DDEBUG
-debug: all
-
 app: $(APP)
+
+debug: CFLAGS := -I. -g -O0 @OPENMP_CFLAGS@ @WARNINGS@ -DDEBUG
+debug: app
 
 profile: CFLAGS := -I. -pg @CFLAGS@ @WARNINGS@ -fno-inline
 profile: app
@@ -29,6 +29,7 @@ $(APP): $(SRC) $(OBJ)
 %.lo: %.c %.h
 	$(GAC) -o $@ $< -c -p "$(CFLAGS)"
 
+%.so: CFLAGS := -I. @CFLAGS@
 %.so: %.c $(LOBJ)
 	$(GAC) -d $< -o $@ -p "$(CFLAGS)" -L "$(LOBJ)"
 
