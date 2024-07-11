@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     int opt = 1, v = 0;
     long t;
     /* default values of dimension, num of threads */
-    ind_t sdim = 4, dim = 6;
+    ind_t sdim = 0, dim = 6;
     vec_t *mat, *cache = NULL;
     /* state is a number which is used to generate RBM matrix */
     state_t state, max_state;
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
             calculate_spin = 1;
             break;
         case 'v':
-            v = 1;
+            v++;
             break;
         case 'j':
             omp_set_num_threads(atoi(optarg));
@@ -126,6 +126,9 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
     }
+    if (sdim==0) {
+        sdim = (dim>11)? 11 : dim-1;
+    }
 
     if (sdim >= dim) {
         fprintf(stderr, "Starting dimension must be less than the destination dimension.\n");
@@ -140,7 +143,7 @@ int main(int argc, char *argv[])
     row = dim-sdim;
     spinc = 0;
     spin  = 0;
-    #pragma omp parallel default(none) private(mat, a, b) shared(cache, max_state, dim, sdim, row, stderr) reduction(+:spinc,spin)
+    #pragma omp parallel default(none) private(mat, a, b) shared(cache, max_state, dim, sdim, row, v) reduction(+:spinc,spin)
     {
         a = 0;
         b = 0;    
@@ -153,25 +156,26 @@ int main(int argc, char *argv[])
             }
         }
         free(mat);
-        /*
         #pragma omp critical 
         {
-            fprintf(stderr, "[%.06f] thread %d finished.\n", (float)toc()/1000000000, omp_get_thread_num());
+            if (v==2) {
+                printf("[%.06f] thread %d finished.\n", (float)toc()/1000000000, omp_get_thread_num());
+            }
         }
-        */
         spinc+= a;
         spin += b;
     }
     t = toc();
+    if (v==1) {
+        printf("[%.06f] calculations done.\n", (float)t/1000000000);
+    }
+
 
     free(cache);
 
     printf("spinc: %lu\n", spinc);
     if (calculate_spin) {
         printf("spin:  %lu\n", spin);
-    }
-    if (v) {
-        printf("time:  %.03fs\n", (float)t/1000000000);
     }
 
     return 0;
