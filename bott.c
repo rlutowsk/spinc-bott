@@ -44,6 +44,39 @@ void set(vec_t *mat, const vec_t *cache, const vec_t state, const ind_t dim)
     }
 }
 
+void print(const vec_t *mat, const ind_t dim)
+{
+    ind_t i, j;
+    static const char c[] = { '.', '1' };
+
+    for (i=0; i<dim; i++) {
+        for (j=0; j<dim; j++) {
+            printf("%c", c[C(mat[i],dim,j)]);
+        }
+        printf("\n");
+    }
+}
+
+/* set transpose in s <= row < e */
+void transpose(const vec_t *src, vec_t *dst, const ind_t dim, ind_t e)
+{
+    ind_t i,j;
+    /* first column is always zero */
+    dst[0] = 0;
+    for (j=1; j<e; j++) {
+        dst[j] = 0;
+        for (i=0; i<j; i++) {
+            dst[j] |= (C(src[i], dim, j))<<(dim-i-1);
+        }
+    }
+    for (j=e; j<dim; j++) {
+        dst[j] &= (1<<(dim-e))-1;
+        for (i=0; i<e; i++) {
+            dst[j] |= (C(src[i], dim, j))<<(dim-i-1);
+        }
+    }
+}
+
 static inline int equal_cols(const vec_t *mat, const ind_t dim, const ind_t i, const ind_t j)
 {
     vec_t mask = (1<<(dim-i-1)) ^ (1<<(dim-j-1));
@@ -71,6 +104,43 @@ size_t is_spinc(const vec_t *mat, const ind_t dim)
         for (i=0; i<j; i++) {
 
             if (equal_cols(mat, dim, i, j)) {
+                aij = 0;
+            } else {
+                aij = scalar_product(mat[i], mat[j]);
+            }
+            if (z && aij) {
+                z = 0;
+            }
+            if (e && aij!=C(mat[i],dim,j)) {
+                e = 0;
+            }
+            if (!e && !z) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+static inline int equal_cols_tr(const vec_t *tr, ind_t i, ind_t j)
+{
+    return tr[i]==tr[j];
+}
+
+size_t is_spinc_tr(const vec_t *mat, const ind_t dim, const vec_t *tr)
+{
+    ind_t i, j, e, z;
+    vec_t aij;
+    for (j=2; j<dim-2; j++) {
+        e = 1;
+        z = 1;
+        for (i=0; i<j; i++) {
+            /*
+            if (equal_cols(mat,dim,i,j)!=(tr[i]==tr[j])) {
+                return 0;
+            }
+            */
+            if (equal_cols_tr(tr,i,j)) {
                 aij = 0;
             } else {
                 aij = scalar_product(mat[i], mat[j]);

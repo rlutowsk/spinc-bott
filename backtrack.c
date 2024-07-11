@@ -19,7 +19,7 @@ void help(const char *name)
     fprintf(stderr, "Usage: %s [-d dimension] [-j njobs] [-s start_dim] [-v] [-h]\n", name);
     fprintf(stderr, "-d: dimension to calculate\n");
     fprintf(stderr, "-j: number of threads\n");
-    fprintf(stderr, "-s: starting dimension, between 3 and 9\n");
+    fprintf(stderr, "-s: starting dimension, between 3 and 11\n");
     fprintf(stderr, "-v: be verbose\n");
 }
 
@@ -33,23 +33,44 @@ static inline vec_t get_max_state(ind_t dim)
     return max_state - 1;
 }
 
+int calculate_spin = 0;
+
 /*
  * cdim - current dimension
  * ddim - destination dimension
 */
-size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t *spinc, size_t *spin)
+size_t backtrack(vec_t *mat, const vec_t *cache, vec_t *tr, ind_t cdim, ind_t ddim, size_t *spinc, size_t *spin)
 {
     vec_t max = 1<<(cdim-2);
     vec_t r;
     vec_t row = ddim-cdim;
 
     if (row==0) {
-        /* final step */
-        for (r = 0; r<max; r++) {
-            mat[0] = cache[r];
-            if (is_spinc(mat, ddim)) {
-                *spinc += 1;
-                *spin  += is_spin(mat, ddim);
+        /* 
+         * final step:
+        * 
+        * no need to calculate matrix 
+        * [ 0 000 ]
+        * [ 0 mat ]
+        * since spinc info from mat
+        * is the same
+        */
+        mat[0]  = 0;
+        *spinc += 1;
+        if (calculate_spin) {
+            *spin  += is_spin(mat, ddim);
+            for (r = 1; r<max; r++) {
+                mat[0] = cache[r];
+                transpose(mat, tr, ddim, 1);
+                if (is_spinc_tr(mat,ddim, tr)) {
+                    *spinc += 1;
+                    *spin  += is_spin(mat, ddim);
+                }
+            }
+        } else {
+            for (r = 1; r<max; r++) {
+                mat[0] = cache[r];
+                *spinc += is_spinc(mat, ddim);
             }
         }
     }
@@ -57,8 +78,9 @@ size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t 
         /* recursive call */
         for (r=0; r<max; r++) {
             mat[row] = cache[r];
-            if (is_spinc(&mat[row], cdim)) {
-                backtrack(mat, cache, cdim+1, ddim, spinc, spin);
+            transpose(&mat[row], &tr[row], cdim, 1);
+            if (is_spinc_tr(&mat[row], cdim, &tr[row])) {
+                backtrack(mat, cache, tr, cdim+1, ddim, spinc, spin);
             }
         }
     }
@@ -70,27 +92,29 @@ int main(int argc, char *argv[])
     int opt = 1, v = 0;
     long time;
     /* default values of dimension, num of threads */
-    ind_t sdim = 4, dim = 6, j=16;
-    vec_t *mat, *cache = NULL;
+    ind_t sdim = 4, dim = 6;
+    vec_t *mat, *cache = NULL, *tr;
     /* state is a number which is used to generate RBM matrix */
     vec_t state, max_state, row;
     size_t spinc, spin, a, b;
     size_t cache_size;
-    while ((opt = getopt(argc, argv, "vhj:d:s:")) != -1) {
+    while ((opt = getopt(argc, argv, "vhj:d:s:a")) != -1) {
         switch (opt) {
+        case 'a':
+            calculate_spin = 1;
+            break;
         case 'v':
             v = 1;
             break;
         case 'j':
-            j = atoi(optarg);
-            omp_set_num_threads(j);
+            omp_set_num_threads(atoi(optarg));
             break;
         case 'd':
             dim = atoi(optarg);
             break;
         case 's':
             sdim = atoi(optarg);
-            if (sdim < 3 || sdim > 10) {
+            if (sdim < 3 || sdim > 11) {
                 help(argv[0]);
                 exit(EXIT_FAILURE);
             }
@@ -117,17 +141,18 @@ int main(int argc, char *argv[])
     row = dim-sdim;
     spinc = 0;
     spin  = 0;
-    #pragma omp parallel default(none) private(mat, a, b) shared(cache, max_state, dim, sdim, row) reduction(+:spinc,spin)
+    #pragma omp parallel default(none) private(mat, a, b, tr) shared(cache, max_state, dim, sdim, row) reduction(+:spinc,spin)
     {
         a = 0;
         b = 0;    
-        mat   = init(dim);
-        #pragma omp for //schedule(static)
+        mat = init(dim);
+        tr  = init(dim);
+        #pragma omp for
         for (state=0; state<=max_state; state++) {
-            //memset(mat, 0, bits);
             set(&mat[row], cache, state, sdim);
-            if (is_spinc(&mat[row], sdim)) {
-                backtrack(mat, cache, sdim+1, dim, &a, &b);
+            transpose(&mat[row], &tr[row], sdim, sdim);
+            if (is_spinc_tr(&mat[row], sdim, &tr[row])) {
+                backtrack(mat, cache, tr, sdim+1, dim, &a, &b);
             }
         }
         free(mat);
@@ -139,7 +164,9 @@ int main(int argc, char *argv[])
     free(cache);
 
     printf("spinc: %lu\n", spinc);
-    printf("spin:  %lu\n", spin);
+    if (calculate_spin) {
+        printf("spin:  %lu\n", spin);
+    }
     if (v) {
         printf("time:  %.03fs\n", (float)time/1000000000);
     }
