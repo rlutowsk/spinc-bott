@@ -3,4 +3,10 @@ backtrack*
 *.lo
 *.o
 *.so
+autom4te.cache
 !*.c
+config.h
+config.log
+config.status
+configure~
+Makefile

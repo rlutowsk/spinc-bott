@@ -37,7 +37,7 @@ void set(vec_t *mat, const vec_t *cache, const state_t state, const ind_t dim)
     vec_t c, j, i;
     state_t mask;
     for (i=1, c=1, j=dim-3; ; c+=i++, j--) {
-        mask = (1<<i) - 1;
+        mask = ((state_t)1<<i) - 1;
         mat[j] = cache[(state>>(c-1))&mask];
         if (j==0) {
             break;
@@ -45,6 +45,7 @@ void set(vec_t *mat, const vec_t *cache, const state_t state, const ind_t dim)
     }
 }
 
+#ifdef DEBUG
 void print(const vec_t *mat, const ind_t dim)
 {
     ind_t i, j;
@@ -57,6 +58,7 @@ void print(const vec_t *mat, const ind_t dim)
         printf("\n");
     }
 }
+#endif
 
 /*
 static inline vec_t scalar_product(const vec_t v1, const vec_t v2)
