@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     ind_t dim = 6, j=16, c;
     vec_t *mat, *cache = NULL;
     /* state is a number which is used to generate RBM matrix */
-    vec_t state, max_state;
+    state_t state, max_state;
     size_t spinc, spin, a, b;
     size_t cache_size;
     while ((opt = getopt(argc, argv, "vhj:d:")) != -1) {

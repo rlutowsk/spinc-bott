@@ -16,10 +16,31 @@
 #ifndef SWAP
 # define SWAP(T, a, b) do { T SWAP_TMP = a; a = b; b = SWAP_TMP; } while (0)
 #endif
+
 #define C(row,dim,j) ((row>>(dim-j-1))&1)
 
-typedef unsigned char ind_t;
-typedef unsigned long vec_t;
+#define VEC_T_SIZE 64
+
+#include <stdint.h>
+
+typedef uint8_t  ind_t;
+typedef uint64_t state_t;
+
+#if VEC_T_SIZE == 64
+    typedef uint64_t vec_t;
+#elif VEC_T_SIZE == 32
+    typedef uint32_t vec_t;
+#else
+#   error "wrong ind_t type"
+#endif
+
+#if VEC_T_SIZE == 64
+#define scalar_product(a,b) __builtin_parityl((a)&(b))
+//#define row_sum __builtin_popcountl
+#else
+#define scalar_product(a,b) __builtin_parity((a)&(b))
+//#define row_sum __builtin_popcount
+#endif
 
 /* cache holds possible values for bit-sequences of orientable RBMs */
 void populate_cache(vec_t **cache, size_t *size, const ind_t dim);
@@ -28,14 +49,10 @@ void populate_cache(vec_t **cache, size_t *size, const ind_t dim);
 vec_t *init(const ind_t dim);
 
 /* set values of rows of RBM matrix dpending on state */
-void set(vec_t *mat, const vec_t *cache, const vec_t state, const ind_t dim);
+void set(vec_t *mat, const vec_t *cache, const state_t state, const ind_t dim);
 
 /* main workers of this app */
 size_t is_spinc(const vec_t *mat, const ind_t dim);
 size_t is_spin(const vec_t *mat, const ind_t dim);
 
-void transpose(const vec_t *src, vec_t *dst, const ind_t dim, ind_t e);
-void print(const vec_t *mat, const ind_t dim);
-
-size_t is_spinc_tr(const vec_t *mat, const ind_t dim, const vec_t *tr);
 #endif

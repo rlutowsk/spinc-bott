@@ -15,8 +15,10 @@ all: $(TARGETS)
 debug: CFLAGS := -Wall -g -fopenmp -O0
 debug: all
 
+app: $(APP)
+
 profile: CFLAGS := -Wall -pg -fopenmp -Ofast -fno-inline
-profile: $(APP)
+profile: app
 
 $(APP): $(SRC) $(OBJ)
 	$(CC) -o $@ $@.c $(CFLAGS) $(OBJ)
