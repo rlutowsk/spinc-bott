@@ -1,18 +1,5 @@
 #include "bott.h"
-
-/* measurements */
-#include <time.h>
-struct timespec tv;
-void tic(void)
-{
-    clock_gettime(CLOCK_REALTIME, &tv);
-}
-long toc(void)
-{
-    static struct timespec st;
-    clock_gettime(CLOCK_REALTIME, &st);
-    return (tv.tv_sec==st.tv_sec) ? st.tv_nsec - tv.tv_nsec : 1000000000*(st.tv_sec-tv.tv_sec)+st.tv_nsec - tv.tv_nsec;
-}
+#include "common.h"
 
 void help(const char *name)
 {
@@ -39,51 +26,7 @@ int calculate_spin = 0;
  * cdim - current dimension
  * ddim - destination dimension
 */
-size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t *spinc, size_t *spin)
-{
-    vec_t max = 1<<(cdim-2);
-    vec_t r;
-    vec_t row = ddim-cdim;
-
-    if (row==0) {
-        /* 
-         * final step:
-        * 
-        * no need to calculate matrix 
-        * [ 0 000 ]
-        * [ 0 mat ]
-        * since spinc info from mat
-        * is the same
-        */
-        mat[0]  = 0;
-        *spinc += 1;
-        if (calculate_spin) {
-            *spin  += is_spin(mat, ddim);
-            for (r = 1; r<max; r++) {
-                mat[0] = cache[r];
-                if (is_spinc(mat,ddim)) {
-                    *spinc += 1;
-                    *spin  += is_spin(mat, ddim);
-                }
-            }
-        } else {
-            for (r = 1; r<max; r++) {
-                mat[0] = cache[r];
-                *spinc += is_spinc(mat, ddim);
-            }
-        }
-    }
-    else {
-        /* recursive call */
-        for (r=0; r<max; r++) {
-            mat[row] = cache[r];
-            if (is_spinc(&mat[row], cdim)) {
-                backtrack(mat, cache, cdim+1, ddim, spinc, spin);
-            }
-        }
-    }
-    return *spinc;
-}
+size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t *spinc, size_t *spin);
 
 int main(int argc, char *argv[])
 {
@@ -109,10 +52,10 @@ int main(int argc, char *argv[])
             omp_set_num_threads(atoi(optarg));
             break;
         case 'd':
-            dim = atoi(optarg);
+            dim = (ind_t)atoi(optarg);
             break;
         case 's':
-            sdim = atoi(optarg);
+            sdim = (ind_t)atoi(optarg);
             if (sdim < 3 || sdim > 11) {
                 help(argv[0]);
                 exit(EXIT_FAILURE);
@@ -181,3 +124,48 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t *spinc, size_t *spin)
+{
+    vec_t max = 1<<(cdim-2);
+    vec_t r;
+    vec_t row = ddim-cdim;
+
+    if (row==0) {
+        /* 
+         * final step:
+        * 
+        * no need to calculate matrix 
+        * [ 0 000 ]
+        * [ 0 mat ]
+        * since spinc info from mat
+        * is the same
+        */
+        mat[0]  = 0;
+        *spinc += 1;
+        if (calculate_spin) {
+            *spin  += is_spin(mat, ddim);
+            for (r = 1; r<max; r++) {
+                mat[0] = cache[r];
+                if (is_spinc(mat,ddim)) {
+                    *spinc += 1;
+                    *spin  += is_spin(mat, ddim);
+                }
+            }
+        } else {
+            for (r = 1; r<max; r++) {
+                mat[0] = cache[r];
+                *spinc += is_spinc(mat, ddim);
+            }
+        }
+    }
+    else {
+        /* recursive call */
+        for (r=0; r<max; r++) {
+            mat[row] = cache[r];
+            if (is_spinc(&mat[row], cdim)) {
+                backtrack(mat, cache, cdim+1, ddim, spinc, spin);
+            }
+        }
+    }
+    return *spinc;
+}

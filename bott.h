@@ -1,6 +1,8 @@
 #ifndef BOTT_H
 #define BOTT_H
 
+#include <config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -19,8 +21,6 @@
 
 #define C(row,dim,j) ((row>>(dim-j-1))&1)
 
-#define VEC_T_SIZE 64
-
 #include <stdint.h>
 
 typedef uint8_t  ind_t;
@@ -35,10 +35,10 @@ typedef uint64_t state_t;
 #endif
 
 #if VEC_T_SIZE == 64
-#define scalar_product(a,b) __builtin_parityl((a)&(b))
+#define scalar_product(a,b) (vec_t)__builtin_parityl((a)&(b))
 //#define row_sum __builtin_popcountl
 #else
-#define scalar_product(a,b) __builtin_parity((a)&(b))
+#define scalar_product(a,b) (vec_t)__builtin_parity((a)&(b))
 //#define row_sum __builtin_popcount
 #endif
 
@@ -54,5 +54,9 @@ void set(vec_t *mat, const vec_t *cache, const state_t state, const ind_t dim);
 /* main workers of this app */
 size_t is_spinc(const vec_t *mat, const ind_t dim);
 size_t is_spin(const vec_t *mat, const ind_t dim);
+
+#ifdef DEBUG
+void print(const vec_t *mat, const ind_t dim);
+#endif
 
 #endif

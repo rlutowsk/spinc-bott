@@ -1,23 +1,23 @@
-CFLAGS := -Wall -Ofast -fopenmp -march=native -I.
+CFLAGS := -I. @CFLAGS@ @WARNINGS@
 
 SRC := count.c backtrack.c
 APP := $(patsubst %.c, %, $(SRC)) 
 LIB := gap.so
 TARGETS := $(APP) $(LIB)
-OBJ  := bott.o
-LOBJ := bott.lo
+OBJ  := bott.o common.o
+LOBJ := $(patsubst %.o, %.lo, $(OBJ))
 
 CC = gcc
 GAC = gac
 
 all: $(TARGETS)
 
-debug: CFLAGS := -Wall -g -fopenmp -O0
+debug: CFLAGS := -I. -g -O0 @OPENMP_CFLAGS@ @WARNINGS@ -DDEBUG
 debug: all
 
 app: $(APP)
 
-profile: CFLAGS := -Wall -pg -fopenmp -Ofast -fno-inline
+profile: CFLAGS := -I. -pg @CFLAGS@ @WARNINGS@ -fno-inline
 profile: app
 
 $(APP): $(SRC) $(OBJ)

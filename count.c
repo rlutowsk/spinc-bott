@@ -1,18 +1,5 @@
 #include "bott.h"
-
-/* measurements */
-#include <time.h>
-struct timespec tv;
-void tic(void)
-{
-    clock_gettime(CLOCK_REALTIME, &tv);
-}
-long toc(void)
-{
-    static struct timespec st;
-    clock_gettime(CLOCK_REALTIME, &st);
-    return (tv.tv_sec==st.tv_sec) ? st.tv_nsec - tv.tv_nsec : 1000000000*(st.tv_sec-tv.tv_sec)+st.tv_nsec - tv.tv_nsec;
-}
+#include "common.h"
 
 void help(const char *name)
 {
@@ -36,11 +23,11 @@ int main(int argc, char *argv[])
             v = 1;
             break;
         case 'j':
-            j = atoi(optarg);
+            j = (ind_t)atoi(optarg);
             omp_set_num_threads(j);
             break;
         case 'd':
-            dim = atoi(optarg);
+            dim = (ind_t)atoi(optarg);
             break;
 
         case 'h':
@@ -87,8 +74,6 @@ int main(int argc, char *argv[])
     printf("spin:  %lu\n", spin);
     if (v) {
         printf("time:  %.03fs\n", (float)time/1000000000);
-        printf("max:   %lu\n", max_state+1);
-        printf("rate:  %.03f\n", (float)spinc/(max_state+1)*100);
     }
 
     return 0;
