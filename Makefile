@@ -1,4 +1,4 @@
-CFLAGS := -Wall -O3 -fopenmp -ffast-math -march=native -I.
+CFLAGS := -Wall -Ofast -fopenmp -march=native -I.
 
 SRC := count.c backtrack.c
 APP := $(patsubst %.c, %, $(SRC)) 
@@ -15,23 +15,14 @@ all: $(TARGETS)
 debug: CFLAGS := -Wall -g -fopenmp -O0
 debug: all
 
+profile: CFLAGS := -Wall -pg -fopenmp -Ofast -fno-inline
+profile: $(APP)
+
 $(APP): $(SRC) $(OBJ)
 	$(CC) -o $@ $@.c $(CFLAGS) $(OBJ)
 
-#count: count.c $(OBJ)
-#	gcc -o count count.c $(CFLAGS) bott.o
-#
-#backtrack: backtrack.c $(OBJ)
-#	gcc -o backtrack backtrack.c $(CFLAGS) bott.o
-
 %.o: %.c %.h
 	$(CC) -o $@ $< -c $(CFLAGS)
-
-#bott.o: bott.c bott.h
-#	gcc -c -o bott.o bott.c $(CFLAGS)
-
-#bott.lo: bott.c
-#	gac -p "$(CFLAGS)" -c bott.c -o bott.lo
 
 %.lo: %.c %.h
 	$(GAC) -o $@ $< -c -p "$(CFLAGS)"

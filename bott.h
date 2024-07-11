@@ -34,4 +34,8 @@ void set(vec_t *mat, const vec_t *cache, const vec_t state, const ind_t dim);
 size_t is_spinc(const vec_t *mat, const ind_t dim);
 size_t is_spin(const vec_t *mat, const ind_t dim);
 
+void transpose(const vec_t *src, vec_t *dst, const ind_t dim, ind_t e);
+void print(const vec_t *mat, const ind_t dim);
+
+size_t is_spinc_tr(const vec_t *mat, const ind_t dim, const vec_t *tr);
 #endif
