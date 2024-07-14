@@ -88,7 +88,6 @@ int main(int argc, char *argv[])
 
     max_state = get_max_state(sdim);
 
-    tic();
     row = dim-sdim;
     spinc = 0;
     spin  = 0;
@@ -101,10 +100,13 @@ int main(int argc, char *argv[])
     omp_set_schedule(omp_sched_dynamic, 1<<bs);
     printlog(3, "openmp chunk size set to 2^%lu\n", bs);
 
+    tic();
     #pragma omp parallel default(none) private(mat, a, b) shared(progress, bs, stdout, cache, max_state, dim, sdim, row, calculate_spin) reduction(+:spinc,spin)
     {
 		vec_t p = 0, sp = (bs>0)?1<<(bs-1):1, total=max_state+1;
 		int show_progress = progress && (omp_get_thread_num()==0);
+        time_t x = toc(), y;
+        double percent;
         
 		a = 0;
         b = 0;    
@@ -113,8 +115,10 @@ int main(int argc, char *argv[])
         for (state=0; state<=max_state; state++) {
 			if (show_progress)
 			{
-				if (p==0) {
-					fprintf(stdout, "%10.6f%%\r", 100.0*state/total);
+				if (p==0 && (y=toc())>x+1000000000) {
+                    x = y;
+                    percent = 100.0*state/total;
+					fprintf(stdout, "\33[2K\r%8.4f%% (ETT: %.1fs)\r", percent, 1.0*x/(percent*10000000));
 					fflush(stdout);
 				}
 				if (++p == sp) {
