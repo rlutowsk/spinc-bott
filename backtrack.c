@@ -3,11 +3,14 @@
 
 void help(const char *name)
 {
-    fprintf(stderr, "Usage: %s [-d dimension] [-j njobs] [-s start_dim] [-v] [-h]\n", name);
-    fprintf(stderr, "-d: dimension to calculate\n");
-    fprintf(stderr, "-j: number of threads\n");
-    fprintf(stderr, "-s: starting dimension, between 3 and 11\n");
-    fprintf(stderr, "-v: be verbose\n");
+    fprintf(stderr, 
+        "Usage: %s [-j njobs] [-s start_dim] [-d dimension] [-v] [-h]\n" \
+        "-j: number of threads\n" \
+        "-d: target dimension to calculate\n" \
+        "-s: starting dimension, between 3 and 11, less than target dimension\n" \
+        "-a: calculate spin structures also\n" \
+        "-v: be verbose\n",
+        name );
 }
 
 static inline state_t get_max_state(ind_t dim)
@@ -30,8 +33,7 @@ size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t 
 
 int main(int argc, char *argv[])
 {
-    int opt = 1, v = 0;
-    long t;
+    int opt = 1, bs=-1, no_output=0, progress=0;
     /* default values of dimension, num of threads */
     ind_t sdim = 0, dim = 6;
     vec_t *mat, *cache = NULL;
@@ -40,13 +42,22 @@ int main(int argc, char *argv[])
     vec_t row;
     size_t spinc, spin, a, b;
     size_t cache_size;
-    while ((opt = getopt(argc, argv, "vhj:d:s:a")) != -1) {
+    while ((opt = getopt(argc, argv, "vhj:d:s:ac:np")) != -1) {
         switch (opt) {
+		case 'p':
+			progress = 1;
+			break;
+        case 'n':
+            no_output = 1;
+            break;
+        case 'c':
+            bs = atoi(optarg);
+            break;
         case 'a':
             calculate_spin = 1;
             break;
         case 'v':
-            v++;
+            verbosity_level++;
             break;
         case 'j':
             omp_set_num_threads(atoi(optarg));
@@ -56,10 +67,6 @@ int main(int argc, char *argv[])
             break;
         case 's':
             sdim = (ind_t)atoi(optarg);
-            if (sdim < 3 || sdim > 11) {
-                help(argv[0]);
-                exit(EXIT_FAILURE);
-            }
             break;
         case 'h':
             help(argv[0]);
@@ -72,9 +79,8 @@ int main(int argc, char *argv[])
     if (sdim==0) {
         sdim = (dim>11)? 11 : dim-1;
     }
-
-    if (sdim >= dim) {
-        fprintf(stderr, "Starting dimension must be less than the destination dimension.\n");
+    if (sdim < 3 || sdim > 11 || sdim>=dim) {
+        fprintf(stderr, "Starting dimension out of range, see help.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -86,13 +92,35 @@ int main(int argc, char *argv[])
     row = dim-sdim;
     spinc = 0;
     spin  = 0;
-    #pragma omp parallel default(none) private(mat, a, b) shared(cache, max_state, dim, sdim, row, v) reduction(+:spinc,spin)
+
+    /* try to guess proper chunk size */
+    if (bs==-1) {
+        bs = 7*sdim-49;
+        bs = (bs<0)?0:bs;
+    }
+    omp_set_schedule(omp_sched_dynamic, 1<<bs);
+    printlog(3, "openmp chunk size set to 2^%lu\n", bs);
+
+    #pragma omp parallel default(none) private(mat, a, b) shared(progress, bs, stdout, cache, max_state, dim, sdim, row, calculate_spin) reduction(+:spinc,spin)
     {
-        a = 0;
+		vec_t p = 0, sp = (bs>0)?1<<(bs-1):1, total=max_state+1;
+		int show_progress = progress && (omp_get_thread_num()==0);
+        
+		a = 0;
         b = 0;    
         mat = init(dim);
-        #pragma omp for nowait schedule(dynamic, 1024)
+        #pragma omp for nowait schedule(runtime)
         for (state=0; state<=max_state; state++) {
+			if (show_progress)
+			{
+				if (p==0) {
+					fprintf(stdout, "%10.6f%%\r", 100.0*state/total);
+					fflush(stdout);
+				}
+				if (++p == sp) {
+					p = 0;
+				}
+			}
             set(&mat[row], cache, state, sdim);
             if (is_spinc(&mat[row], sdim)) {
                 backtrack(mat, cache, sdim+1, dim, &a, &b);
@@ -101,25 +129,31 @@ int main(int argc, char *argv[])
         free(mat);
         #pragma omp critical 
         {
-            if (v==2) {
-                printf("[%.06f] thread %d finished.\n", (float)toc()/1000000000, omp_get_thread_num());
+            if (calculate_spin) {
+                printlog(2, "thread %2d finished: %lu/%lu spin/spinc manifolds\n", omp_get_thread_num(), b, a);
+            } else {
+                printlog(2, "thread %2d finished: %lu spinc manifolds\n", omp_get_thread_num(), a);
             }
         }
         spinc+= a;
         spin += b;
     }
-    t = toc();
-    if (v==1) {
-        printf("[%.06f] calculations done.\n", (float)t/1000000000);
+
+    if (calculate_spin) {
+        printlog(1, "calculations finished: %lu/%lu spin/spinc manifolds in total\n", spin, spinc);
+    } else {
+        printlog(1, "calculations finished: %lu spinc manifolds in total\n", spinc);
     }
 
+    if (!no_output) {
+        if (calculate_spin) {
+            printf("%lu/%lu\n", spin, spinc);
+        } else {
+            printf("%lu\n", spinc);
+        }
+    }
 
     free(cache);
-
-    printf("spinc: %lu\n", spinc);
-    if (calculate_spin) {
-        printf("spin:  %lu\n", spin);
-    }
 
     return 0;
 }
