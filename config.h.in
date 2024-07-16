@@ -3,4 +3,8 @@
 
 #define VEC_T_SIZE @ROW_WIDTH@
 
+#if @ENABLE_PROGRESS@
+    #define RBM_SHOW_PROGRESS
+#endif
+
 #endif

@@ -33,19 +33,34 @@ size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t 
 
 int main(int argc, char *argv[])
 {
-    int opt = 1, bs=-1, no_output=0, progress=0;
+    int opt = 1, bs=-1, no_output=0;
+    state_t test = 0;
+#ifdef RBM_SHOW_PROGRESS
+    int progress=0;
+#endif
     /* default values of dimension, num of threads */
     ind_t sdim = 0, dim = 6;
     vec_t *mat, *cache = NULL;
     /* state is a number which is used to generate RBM matrix */
     state_t state, max_state;
+    state_t loop_start=1, loop_stop=1;
     vec_t row;
     size_t spinc, spin, a, b;
     size_t cache_size;
-    while ((opt = getopt(argc, argv, "vhj:d:s:ac:np")) != -1) {
+
+    tic();
+
+    while ((opt = getopt(argc, argv, "vhj:d:s:ac:npt:")) != -1) {
         switch (opt) {
+        case 't':
+            test = atol(optarg);
+            break;
 		case 'p':
+        #ifdef RBM_SHOW_PROGRESS
 			progress = 1;
+        #else
+            printlog(0, "compiled without progress support, flag '-p' not effective\n");
+        #endif
 			break;
         case 'n':
             no_output = 1;
@@ -97,22 +112,33 @@ int main(int argc, char *argv[])
         bs = 7*sdim-49;
         bs = (bs<0)?0:bs;
     }
-    omp_set_schedule(omp_sched_dynamic, 1<<bs);
-    printlog(3, "openmp chunk size set to 2^%lu\n", bs);
 
-    tic();
-    #pragma omp parallel default(none) private(mat, a, b) shared(progress, bs, stdout, cache, max_state, dim, sdim, row, calculate_spin) reduction(+:spinc,spin)
+    if (test>0) {
+        loop_start = (max_state+1)/2;
+        loop_stop  = loop_start + (1<<test) - 1;
+    } else {
+        loop_start = 0;
+        loop_stop  = max_state;
+    }
+    printlog(2, "start: %lu, end: %lu\n", loop_start, loop_stop);
+    omp_set_schedule(omp_sched_dynamic, 1<<bs);
+    printlog(2, "openmp chunk size set to 2^%lu\n", bs);
+
+    #pragma omp parallel private(mat, a, b) shared(bs, stdout, cache, max_state, dim, sdim, row, calculate_spin, loop_start, loop_stop) reduction(+:spinc,spin)
     {
+    #ifdef RBM_SHOW_PROGRESS
 		vec_t p = 0, sp = (bs>0)?1<<(bs-1):1, total=max_state+1;
 		int show_progress = progress && (omp_get_thread_num()==0);
         time_t x = toc(), y;
         double percent;
+    #endif
         
 		a = 0;
         b = 0;    
         mat = init(dim);
         #pragma omp for nowait schedule(runtime)
-        for (state=0; state<=max_state; state++) {
+        for (state=loop_start; state<=loop_stop; state++) {
+        #ifdef RBM_SHOW_PROGRESS    
 			if (show_progress)
 			{
 				if (p==0 && (y=toc())>x+1000000000) {
@@ -125,6 +151,7 @@ int main(int argc, char *argv[])
 					p = 0;
 				}
 			}
+        #endif
             set(&mat[row], cache, state, sdim);
             if (is_spinc(&mat[row], sdim)) {
                 backtrack(mat, cache, sdim+1, dim, &a, &b);
@@ -150,6 +177,7 @@ int main(int argc, char *argv[])
     }
 
     if (!no_output) {
+        printf("\33[2K\r");
         if (calculate_spin) {
             printf("%lu/%lu\n", spin, spinc);
         } else {

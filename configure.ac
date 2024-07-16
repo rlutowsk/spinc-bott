@@ -50,11 +50,22 @@ if ( test "x${enable_warnings}" = "xextra" ); then
 fi;
 AC_SUBST([WARNINGS])
 
-AC_MSG_CHECKING([checking row width])
+AC_MSG_CHECKING([row width])
 AC_ARG_ENABLE(short-row,AS_HELP_STRING([--enable-short-row],[use 32-bit row (default: 64-bit)]),ROW_WIDTH=32,ROW_WIDTH=64)
 AC_MSG_RESULT([${ROW_WIDTH}])
 
 AC_SUBST([ROW_WIDTH])
+
+AC_MSG_CHECKING([progress enabled])
+AC_ARG_ENABLE(progress, AS_HELP_STRING([--enable-progress],[give possibility to show progress of calculations]))
+if ( test "x${enable_progress}" = "xyes" ); then
+    ENABLE_PROGRESS=1
+    AC_MSG_RESULT([yes])
+else
+    ENABLE_PROGRESS=0
+    AC_MSG_RESULT([no])
+fi;
+AC_SUBST([ENABLE_PROGRESS])
 
 ROOTDIR=$PWD
 AC_SUBST([ROOTDIR])

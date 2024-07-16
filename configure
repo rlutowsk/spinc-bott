@@ -650,6 +650,7 @@ ac_includes_default="\
 ac_header_c_list=
 ac_subst_vars='LTLIBOBJS
 ROOTDIR
+ENABLE_PROGRESS
 ROW_WIDTH
 LIBOBJS
 host_os
@@ -719,6 +720,7 @@ enable_option_checking
 enable_openmp
 enable_warnings
 enable_short_row
+enable_progress
 '
       ac_precious_vars='WARNINGS
 build_alias
@@ -1360,6 +1362,7 @@ Optional Features:
                           add various warnings options to CFLAGS
                           [default=wall]
   --enable-short-row      use 32-bit row (default: 64-bit)
+  --enable-progress       give possibility to show progress of calculations
 
 Some influential environment variables:
   WARNINGS    keeps compiler warnings options
@@ -4743,8 +4746,8 @@ printf "%s\n" "extra" >&6; }
 fi;
 
 
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking checking row width" >&5
-printf %s "checking checking row width... " >&6; }
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking row width" >&5
+printf %s "checking row width... " >&6; }
 # Check whether --enable-short-row was given.
 if test ${enable_short_row+y}
 then :
@@ -4756,6 +4759,25 @@ fi
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: ${ROW_WIDTH}" >&5
 printf "%s\n" "${ROW_WIDTH}" >&6; }
 
+
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking progress enabled" >&5
+printf %s "checking progress enabled... " >&6; }
+# Check whether --enable-progress was given.
+if test ${enable_progress+y}
+then :
+  enableval=$enable_progress;
+fi
+
+if ( test "x${enable_progress}" = "xyes" ); then
+    ENABLE_PROGRESS=1
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+else
+    ENABLE_PROGRESS=0
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi;
 
 
 ROOTDIR=$PWD
