@@ -23,5 +23,5 @@ After compiling, for both `count` and `backtrack` commands you may use the follo
 
 For `backtrack` you have also:
 
-`-s`: dimension you start the calculations with (default one less than the target dimension, but less than 12)
+`-s`: dimension you start the calculations with (default one less than the target dimension, but less than 12)  
 `-a`: wether you want to calculate number of manifolds with spin structures also
