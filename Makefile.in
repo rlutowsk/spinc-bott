@@ -1,6 +1,6 @@
 CFLAGS := -I. @CFLAGS@ @WARNINGS@
 
-SRC := count.c backtrack.c
+SRC := count.c backtrack.c mats.c
 APP := $(patsubst %.c, %, $(SRC)) 
 LIB := gap.so
 TARGETS := $(APP) $(LIB)

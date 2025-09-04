@@ -34,6 +34,36 @@ typedef uint64_t state_t;
 #   error "wrong ind_t type"
 #endif
 
+/* NEW */
+typedef __int128_t mat_t;
+typedef mat_t col_t;
+typedef uint64_t row_t;
+typedef uint64_t elm_t;
+// fix the number for now
+// it is the maximal dimension that we can work with
+// if we want to store n by n matrices
+// declared in bott.c
+extern mat_t col_masks[11];
+extern mat_t row_masks[11];
+
+static inline row_t ROW(mat_t mat, ind_t dim, ind_t i)
+{
+    return (row_t)( ( mat & row_masks[i] ) >> i*dim );
+}
+static inline col_t COL(mat_t mat, ind_t dim, ind_t j)
+{
+    return ( mat & col_masks[j] ) >> (dim - j - 1);
+}
+static inline elm_t ELM(mat_t mat, ind_t dim, ind_t i, ind_t j)
+{
+    return (elm_t)( mat >> (i*dim+dim-j-1) ) & (elm_t)1;
+}
+
+void new_init(ind_t dim);
+void new_set(mat_t *mat, const vec_t *cache, const state_t state, const ind_t dim);
+size_t new_is_spinc(const mat_t mat, const ind_t dim);
+/* END NEW */
+
 #if VEC_T_SIZE == 64
 #define scalar_product(a,b) (vec_t)__builtin_parityl((a)&(b))
 //#define row_sum __builtin_popcountl
