@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     spinc = 0;
     spin  = 0;
     tic();
-    #pragma omp parallel default(none) private (mat, a, b) shared(cache, dim, max_state) reduction(+:spin,spinc)
+    #pragma omp parallel private (mat, a, b) shared(cache, dim, max_state) reduction(+:spin,spinc)
     {
         mat   = init(dim);
         a = 0;
