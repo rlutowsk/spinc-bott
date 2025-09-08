@@ -75,17 +75,17 @@ static inline int equal_cols(const vec_t *mat, const ind_t dim, const ind_t i, c
 {
     vec_t mask = (1<<(dim-i-1)) ^ (1<<(dim-j-1));
     ind_t r;
-    for (r=0; r<i; r++) {
+    for (r=0; r<dim; r++) {
         if (scalar_product(mat[r],mask)) {
             return 0;
         }
     }
     /* r = i; */
-    for (; r<j; r++) {
-        if (mat[r]&mask) {
-            return 0;
-        }
-    }
+    // for (; r<j; r++) {
+    //     if (mat[r]&mask) {
+    //         return 0;
+    //     }
+    // }
     return 1;
 }
 
