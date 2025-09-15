@@ -12,14 +12,14 @@
 /* ensure we are in 64-bit environment */
 #include <bits/wordsize.h>
 #if __WORDSIZE != 64
-# error "compile only in 64-bit mode"
+    #error "compile only in 64-bit mode"
 #endif
 
 #ifndef SWAP
-# define SWAP(T, a, b) do { T SWAP_TMP = a; a = b; b = SWAP_TMP; } while (0)
+    #define SWAP(T, a, b) do { T SWAP_TMP = a; a = b; b = SWAP_TMP; } while (0)
 #endif
 
-#define C(row,dim,j) ((row>>(dim-j-1))&1)
+#define C(row,dim,j) ((row>>(j))&1)
 
 #include <stdint.h>
 
@@ -31,15 +31,15 @@ typedef uint64_t state_t;
 #elif VEC_T_SIZE == 32
     typedef uint32_t vec_t;
 #else
-#   error "wrong ind_t type"
+    #error "wrong ind_t type"
 #endif
 
 #if VEC_T_SIZE == 64
-#define scalar_product(a,b) (vec_t)__builtin_parityl((a)&(b))
-//#define row_sum __builtin_popcountl
+    #define scalar_product(a,b) (vec_t)__builtin_parityl((a)&(b))
+    //#define row_sum __builtin_popcountl
 #else
-#define scalar_product(a,b) (vec_t)__builtin_parity((a)&(b))
-//#define row_sum __builtin_popcount
+    #define scalar_product(a,b) (vec_t)__builtin_parity((a)&(b))
+    //#define row_sum __builtin_popcount
 #endif
 
 /* cache holds possible values for bit-sequences of orientable RBMs */
@@ -56,7 +56,7 @@ size_t is_spinc(const vec_t *mat, const ind_t dim);
 size_t is_spin(const vec_t *mat, const ind_t dim);
 
 #ifdef DEBUG
-void print(const vec_t *mat, const ind_t dim);
+    void print(const vec_t *mat, const ind_t dim);
 #endif
 
-#endif
+#endif /* BOTT_H */
