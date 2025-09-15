@@ -3,7 +3,7 @@
 
 void help(const char *name)
 {
-    fprintf(stderr, 
+    fprintf(stderr,
         "Usage: %s [-j njobs] [-s start_dim] [-d dimension] [-v] [-h]\n" \
         "-j: number of threads\n" \
         "-d: target dimension to calculate\n" \
@@ -136,13 +136,12 @@ int main(int argc, char *argv[])
         time_t x = toc(), y;
         double percent;
     #endif
-        
-		a = 0;
-        b = 0;    
+	a = 0;
+        b = 0;
         mat = init(dim);
         #pragma omp for nowait schedule(runtime)
         for (state=loop_start; state<=loop_stop; state++) {
-        #ifdef RBM_SHOW_PROGRESS    
+        #ifdef RBM_SHOW_PROGRESS
 			if (show_progress)
 			{
 				if (p==0 && (y=toc())>x+1000000000) {
@@ -162,7 +161,7 @@ int main(int argc, char *argv[])
             }
         }
         free(mat);
-        #pragma omp critical 
+        #pragma omp critical
         {
             if (calculate_spin) {
                 printlog(2, "thread %2d finished: %lu/%lu spin/spinc manifolds\n", omp_get_thread_num(), b, a);
@@ -219,10 +218,10 @@ size_t backtrack(vec_t *mat, vec_t **cache, ind_t cdim, ind_t ddim, size_t *spin
     increase_dimension(mat, ddim);
 
     if (row==0) {
-        /* 
+        /*
          * final step:
-         * 
-         * no need to calculate matrix 
+         *
+         * no need to calculate matrix
          * [ 0 000 ]
          * [ 0 mat ]
          * since spinc info from mat
@@ -252,7 +251,7 @@ size_t backtrack(vec_t *mat, vec_t **cache, ind_t cdim, ind_t ddim, size_t *spin
             mat[row] = cache[cdim][r];
             if (is_spinc(&mat[row], cdim)) {
                 backtrack(mat, cache, cdim+1, ddim, spinc, spin);
-                /* 
+                /*
                  * after every call we have to decrease dimension of all rows
                  * since next call will increase it again
                  */
