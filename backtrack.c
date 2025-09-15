@@ -29,7 +29,7 @@ int calculate_spin = 0;
  * cdim - current dimension
  * ddim - destination dimension
 */
-size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t *spinc, size_t *spin);
+size_t backtrack(vec_t *mat, vec_t **cache, ind_t cdim, ind_t ddim, size_t *spinc, size_t *spin);
 
 int main(int argc, char *argv[])
 {
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 #endif
     /* default values of dimension, num of threads */
     ind_t sdim = 0, dim = 6;
-    vec_t *mat, *cache = NULL;
+    vec_t *mat, *cache[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     /* state is a number which is used to generate RBM matrix */
     state_t state, max_state;
     state_t loop_start=1, loop_stop=1;
@@ -99,7 +99,11 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    populate_cache(&cache, &cache_size, dim);
+    for (int i=sdim; i<12; i++) {
+        vec_t *tmp;
+        populate_cache(&tmp, &cache_size, i);
+        cache[i] = tmp;
+    }
 
     max_state = get_max_state(sdim);
 
@@ -152,7 +156,7 @@ int main(int argc, char *argv[])
 				}
 			}
         #endif
-            set(&mat[row], cache, state, sdim);
+            set(&mat[row], cache[sdim], state, sdim);
             if (is_spinc(&mat[row], sdim)) {
                 backtrack(mat, cache, sdim+1, dim, &a, &b);
             }
@@ -185,33 +189,51 @@ int main(int argc, char *argv[])
         }
     }
 
-    free(cache);
+    for(int i=sdim; i<12; i++) {
+        free(cache[i]);
+    }
 
     return 0;
 }
 
-size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t *spinc, size_t *spin)
+static inline void increase_dimension(vec_t *mat, ind_t dim)
+{
+    for (ind_t i=1; i<dim; i++) {
+        mat[i] <<= 1;
+    }
+}
+
+static inline void decrease_dimension(vec_t *mat, ind_t dim)
+{
+    for (ind_t i=1; i<dim; i++) {
+        mat[i] >>= 1;
+    }
+}
+
+size_t backtrack(vec_t *mat, vec_t **cache, ind_t cdim, ind_t ddim, size_t *spinc, size_t *spin)
 {
     vec_t max = 1<<(cdim-2);
     vec_t r;
     vec_t row = ddim-cdim;
 
+    increase_dimension(mat, ddim);
+
     if (row==0) {
         /* 
          * final step:
-        * 
-        * no need to calculate matrix 
-        * [ 0 000 ]
-        * [ 0 mat ]
-        * since spinc info from mat
-        * is the same
-        */
+         * 
+         * no need to calculate matrix 
+         * [ 0 000 ]
+         * [ 0 mat ]
+         * since spinc info from mat
+         * is the same
+         */
         mat[0]  = 0;
         *spinc += 1;
         if (calculate_spin) {
             *spin  += is_spin(mat, ddim);
             for (r = 1; r<max; r++) {
-                mat[0] = cache[r];
+                mat[0] = cache[ddim][r];
                 if (is_spinc(mat,ddim)) {
                     *spinc += 1;
                     *spin  += is_spin(mat, ddim);
@@ -219,7 +241,7 @@ size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t 
             }
         } else {
             for (r = 1; r<max; r++) {
-                mat[0] = cache[r];
+                mat[0] = cache[ddim][r];
                 *spinc += is_spinc(mat, ddim);
             }
         }
@@ -227,9 +249,14 @@ size_t backtrack(vec_t *mat, const vec_t *cache, ind_t cdim, ind_t ddim, size_t 
     else {
         /* recursive call */
         for (r=0; r<max; r++) {
-            mat[row] = cache[r];
+            mat[row] = cache[cdim][r];
             if (is_spinc(&mat[row], cdim)) {
                 backtrack(mat, cache, cdim+1, ddim, spinc, spin);
+                /* 
+                 * after every call we have to decrease dimension of all rows
+                 * since next call will increase it again
+                 */
+                decrease_dimension(mat, ddim);
             }
         }
     }

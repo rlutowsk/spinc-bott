@@ -8,27 +8,19 @@ void populate_cache(vec_t **cache, size_t *size, const ind_t dim)
     if (*size<4) { *size = 4; }
     *cache = (vec_t*)malloc(VEC_T_SIZE*(*size));
     (*cache)[0] = 0;
-    (*cache)[1] = 3;
-    (*cache)[2] = 5;
-    (*cache)[3] = 6;
-    for (i=4, m=6; i<*size; ) {
-        o = i>>1;
-        m <<= 1;
-        for (j=i; j<i+o; j++) {
-            (*cache)[j] = m^(*cache)[j-o];
-        }
-        for (i<<=1, o *= 3; j<i; j++) {
-            (*cache)[j] = m^(*cache)[j-o];
+    for (i=1, m=1; i<=dim-2; i++) {
+        o = 3 << (dim-1-i);
+        for (j=0; j < (1<<(i-1)); j++) {
+            (*cache)[m++] = o ^ (*cache)[j];
         }
     }
-
 }
 
 vec_t *init(const ind_t dim)
 {
     static vec_t *mat;
-    mat = (vec_t*)malloc(VEC_T_SIZE*dim);
-    memset(mat, 0, VEC_T_SIZE*dim);
+    mat = (vec_t*)malloc(VEC_T_SIZE * dim);
+    memset(mat, 0, VEC_T_SIZE * dim);
     return mat;
 }
 
@@ -73,7 +65,7 @@ static inline vec_t scalar_product(const vec_t v1, const vec_t v2)
 
 static inline int equal_cols(const vec_t *mat, const ind_t dim, const ind_t i, const ind_t j)
 {
-    vec_t mask = (1<<(dim-i-1)) ^ (1<<(dim-j-1));
+    vec_t mask = (1<<i) ^ (1<<j);
     ind_t r;
     for (r=0; r<dim; r++) {
         if (scalar_product(mat[r],mask)) {
@@ -128,7 +120,6 @@ static inline int row_sum(vec_t r)
 #endif
 }
 
-
 size_t is_spin(const vec_t *mat, const ind_t dim)
 {
     ind_t i,j;
@@ -149,4 +140,3 @@ size_t is_spin(const vec_t *mat, const ind_t dim)
     }
     return 1;
 }
-
