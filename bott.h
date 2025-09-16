@@ -55,8 +55,16 @@ void set(vec_t *mat, const vec_t *cache, const state_t state, const ind_t dim);
 size_t is_spinc(const vec_t *mat, const ind_t dim);
 size_t is_spin(const vec_t *mat, const ind_t dim);
 
-#ifdef DEBUG
-    void print(const vec_t *mat, const ind_t dim);
-#endif
+void print_mat(const vec_t *mat, const ind_t dim);
+
+void encode_matrix(const vec_t *mat, const ind_t dim, char *buffer);
+
+void decode_matrix(vec_t *mat, const ind_t dim, const char *buffer);
+
+void swap_rows_and_cols(vec_t *src, vec_t *dst, ind_t dim, ind_t r1, ind_t r2);
+
+void conditional_add_col(vec_t *src, vec_t *dst, ind_t dim, ind_t k);
+
+void conditional_add_row(vec_t *src, vec_t *dst, ind_t dim, ind_t l, ind_t m);
 
 #endif /* BOTT_H */

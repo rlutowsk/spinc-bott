@@ -37,8 +37,7 @@ void set(vec_t *mat, const vec_t *cache, const state_t state, const ind_t dim)
     }
 }
 
-#ifdef DEBUG
-void print(const vec_t *mat, const ind_t dim)
+void print_mat(const vec_t *mat, const ind_t dim)
 {
     ind_t i, j;
     static const char c[] = { '.', '1' };
@@ -50,7 +49,6 @@ void print(const vec_t *mat, const ind_t dim)
         printf("\n");
     }
 }
-#endif
 
 /*
 static inline vec_t scalar_product(const vec_t v1, const vec_t v2)
@@ -72,12 +70,6 @@ static inline int equal_cols(const vec_t *mat, const ind_t dim, const ind_t i, c
             return 0;
         }
     }
-    /* r = i; */
-    // for (; r<j; r++) {
-    //     if (mat[r]&mask) {
-    //         return 0;
-    //     }
-    // }
     return 1;
 }
 
@@ -139,4 +131,76 @@ size_t is_spin(const vec_t *mat, const ind_t dim)
         }
     }
     return 1;
+}
+
+const vec_t row_masks[]      = { 0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095 };
+const ind_t row_characters[] = { 0, 1, 1, 1,  1,  2,  2,   2,   2,   3,    3,    3,    3 };
+const ind_t mat_characters[] = { 0, 1, 2, 3,  4, 10, 12,  14,  16,  27,   30,   33,   36 };
+
+void encode_matrix(const vec_t *mat, const ind_t dim, char *buffer)
+{
+    ind_t i;
+    for (i=0; i<dim; i++) {
+        snprintf(buffer+i*row_characters[dim], row_characters[dim]+1, "%0*lx", row_characters[dim], mat[i]&row_masks[dim]);
+    }
+}
+
+void decode_matrix(vec_t *mat, const ind_t dim, const char *buffer)
+{
+    ind_t i;
+    for (i = 0; i < dim; i++) {
+        // Obliczanie przesunięcia w buforze
+        size_t offset = i * row_characters[dim];
+
+        // Tymczasowy bufor do podciągu
+        char temp_buffer[row_characters[dim] + 1];
+        strncpy(temp_buffer, buffer + offset, row_characters[dim]);
+        temp_buffer[row_characters[dim]] = '\0';
+
+        // Konwersja z szesnastkowego ciągu na liczbę
+        mat[i] = strtol(temp_buffer, NULL, 16);
+    }
+}
+
+/*
+ * isomorphism operations for Bott matrices
+ * based on:
+ * "Real Bott manifolds and acyclic digraphs" by Suyoung Choi, Mikiya Masuda, Sang-il Oum
+ * https://arxiv.org/abs/1104.0072
+ */
+
+
+/* Op1 */
+void swap_rows_and_cols(vec_t *src, vec_t *dst, ind_t dim, ind_t r1, ind_t r2)
+{
+    vec_t diff, mask;
+    for (ind_t i=0; i<dim; i++) {
+        diff = ((src[i] >> r1) ^ (src[i] >> r2)) & 1;
+        mask = (diff << r1) | (diff << r2);
+        dst[i] = src[i] ^ mask;
+    }
+    SWAP(vec_t, dst[r1], dst[r2]);
+}
+
+/* Op2 */
+void conditional_add_col(vec_t *src, vec_t *dst, ind_t dim, ind_t k)
+{
+    vec_t row_k = src[k];
+
+    for (ind_t i=0; i<dim; i++) {
+        vec_t cond = -(vec_t)(((src[i] >> k) & 1));
+        dst[i] = src[i] ^ (row_k & cond);
+    }
+}
+
+/* Op3 */
+void conditional_add_row(vec_t *src, vec_t *dst, ind_t dim, ind_t l, ind_t m)
+{
+    vec_t row_l = src[l];
+
+    for (ind_t i=0; i<dim; i++) {
+        dst[i] = src[i];
+    }
+    vec_t cond = -(vec_t)((l!=m) && equal_cols(src, dim, l, m));
+    dst[m] = src[m] ^ (row_l & cond);
 }

@@ -4782,7 +4782,7 @@ fi;
 
 ROOTDIR=$PWD
 
-ac_config_files="$ac_config_files config.h Makefile"
+ac_config_files="$ac_config_files config.h Makefile gap.g"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5486,6 +5486,7 @@ do
   case $ac_config_target in
     "config.h") CONFIG_FILES="$CONFIG_FILES config.h" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
+    "gap.g") CONFIG_FILES="$CONFIG_FILES gap.g" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

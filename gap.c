@@ -3,7 +3,7 @@
 
 /* default values of dimension, num of threads */
 ind_t dim;
-vec_t *mat, *cache;
+vec_t *mat, *aux, *cache;
 /* state is a number which is used to generate RBM matrix */
 vec_t state, max_state;
 size_t spinc, spin;
@@ -22,6 +22,7 @@ inline int initialized(void)
 Obj BottInit(Obj self, Obj d)
 {
     ind_t c;
+    char buffer[1024];
 
     if (initialized()) {
         return False;
@@ -42,6 +43,7 @@ Obj BottInit(Obj self, Obj d)
     populate_cache(&cache, &cache_size, dim);
 
     mat = init(dim);
+    aux = init(dim);
 
     state = 0;
 
@@ -74,7 +76,7 @@ Obj BottPrint(Obj self)
     return (Obj)0;
 }
 
-Obj BottMat(Obj self)
+Obj OBJ_MAT(vec_t *mat, ind_t dim)
 {
     ind_t i,j;
     Obj M, row;
@@ -91,6 +93,66 @@ Obj BottMat(Obj self)
         CHANGED_BAG(M);
     }
     return M;
+}
+
+void MAT_OBJ(vec_t *mat, Obj M)
+{
+    ind_t i, j;
+    if (initialized() && IS_PLIST(M) && LEN_PLIST(M)==dim) {
+        for (i=0; i<dim; i++) {
+            vec_t r = 0;
+            Obj row = ELM_PLIST(M, i+1);
+            if (IS_PLIST(row) && LEN_PLIST(row)==dim) {
+                for (j=0; j<dim; j++) {
+                    Obj e = ELM_PLIST(row, j+1);
+                    if (IS_INTOBJ(e)) {
+                        r |= (INT_INTOBJ(e)&1) << j;
+                    } else {
+                        ErrorQuit("matrix element is not a small integer", 0L, 0L);
+                    }
+                }
+                mat[i] = r;
+            } else {
+                ErrorQuit("matrix row is not a list of length %d", (Int)dim, 0L);
+            }
+        }
+    } else {
+        ErrorQuit("matrix is not a list of length %d", (Int)dim, 0L);
+    }
+}
+
+Obj BottMatObj(Obj self)
+{
+    if (initialized()) {
+        return OBJ_MAT(mat, dim);
+    }
+    return (Obj)0;
+}
+
+Obj BottAuxObj(Obj self)
+{
+    if (initialized()) {
+        return OBJ_MAT(aux, dim);
+    }
+    return (Obj)0;
+}
+
+Obj BottSetMat(Obj self, Obj M)
+{
+    if (initialized()) {
+        MAT_OBJ(mat, M);
+        return (Obj)0;
+    }
+    return Fail;
+}
+
+Obj BottSetAux(Obj self, Obj M)
+{
+    if (initialized()) {
+        MAT_OBJ(aux, M);
+        return (Obj)0;
+    }
+    return Fail;
 }
 
 Obj BottNext(Obj self)
@@ -110,6 +172,8 @@ Obj BottSetState(Obj self, Obj s)
     }
     state = candidate;
     set(mat, cache, state, dim);
+    mat[dim-2] = 0;
+    mat[dim-1] = 0;
     return s;
 }
 
@@ -142,6 +206,94 @@ Obj BottLastNonzeroRow(Obj self)
     return Fail;
 }
 
+Obj BottSwapRowsAndCols(Obj self, Obj r1, Obj r2)
+{
+    ind_t row1 = INT_INTOBJ(r1);
+    ind_t row2 = INT_INTOBJ(r2);
+    if (uninitialized() || row1<1 || row1>dim || row2<1 || row2>dim) {
+        return Fail;
+    }
+    swap_rows_and_cols(mat, aux, dim, row1-1, row2-1);
+    return (Obj)0;
+}
+
+Obj BottConditionalAddCol(Obj self, Obj k)
+{
+    ind_t col = INT_INTOBJ(k);
+    if (uninitialized() || col<1 || col>dim) {
+        return Fail;
+    }
+    conditional_add_col(mat, aux, dim, col-1);
+    return (Obj)0;
+}
+
+Obj BottConditionalAddRow(Obj self, Obj l, Obj m)
+{
+    ind_t row_l = INT_INTOBJ(l);
+    ind_t row_m = INT_INTOBJ(m);
+    if (uninitialized() || row_l<1 || row_l>dim || row_m<1 || row_m>dim) {
+        return Fail;
+    }
+    conditional_add_row(mat, aux, dim, row_l-1, row_m-1);
+    return (Obj)0;
+}
+
+Obj BottEncodeMat(Obj self)
+{
+    static char buffer[1024];
+    if (initialized()) {
+        encode_matrix(mat, dim, buffer);
+        return MakeString(buffer);
+    }
+    return Fail;
+}
+
+Obj BottEncodeAux(Obj self)
+{
+    static char buffer[1024];
+    if (initialized()) {
+        encode_matrix(aux, dim, buffer);
+        return MakeString(buffer);
+    }
+    return Fail;
+}
+
+Obj BottDecodeMat(Obj self, Obj code)
+{
+    if (initialized()) {
+        decode_matrix(mat, dim, CSTR_STRING(code));
+    }
+    return (Obj)0;
+}
+
+int is_upper_triangular(const vec_t *mat, const ind_t dim)
+{
+    vec_t row_mask = 1;
+    for (ind_t i=0; i<dim; i++) {
+        row_mask |= (1<<i);
+        if ( mat[i] & row_mask ) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+Obj BottIsUpperTriangularMat(Obj self)
+{
+    return is_upper_triangular(mat, dim) ? True : False;
+}
+
+Obj BottIsUpperTriangularAux(Obj self)
+{
+    return is_upper_triangular(aux, dim) ? True : False;
+}
+
+Obj BottIsUpperTriangularByCode(Obj self, Obj code)
+{
+    decode_matrix(aux, dim, CSTR_STRING(code));
+    return is_upper_triangular(aux, dim) ? True : False;
+}
+
 /* 
  * GVarFunc - list of functions to export
  */
@@ -149,13 +301,25 @@ static StructGVarFunc GVarFunc[] = {
     { "BottInit"          , 1, "dim"   , BottInit           , "bott.c:BottInit" },
     { "BottClear"         , 0, ""      , BottClear          , "bott.c:BottClear" },
     { "BottPrint"         , 0, ""      , BottPrint          , "bott.c:BottPrint" },
-    { "BottMat"           , 0, ""      , BottMat            , "bott.c:BottMat" },
+    { "BottGetMat"        , 0, ""      , BottMatObj         , "bott.c:BottGetMat" },
+    { "BottSetMat"        , 1, "M"     , BottSetMat         , "bott.c:BottSetMat" },
+    { "BottGetAux"        , 0, ""      , BottAuxObj         , "bott.c:BottGetAux" },
+    { "BottSetAux"        , 1, "M"     , BottSetAux         , "bott.c:BottSetAux" },
     { "BottNext"          , 0, ""      , BottNext           , "bott.c:BottNext" },
     { "BottSetState"      , 1, "state" , BottSetState       , "bott.c:BottSetState" },
     { "BottGetState"      , 0, ""      , BottGetState       , "bott.c:BottGetState" },
     { "BottIsSpinc"       , 0, ""      , BottIsSpinc        , "bott.c:BottIsSpinc" },
     { "BottIsSpin"        , 0, ""      , BottIsSpin         , "bott.c:BottIsSpin" },
     { "BottLastNonzeroRow", 0, ""      , BottLastNonzeroRow , "bott.c:BottLastNonzeroRow" },
+    { "BottSwapRowsAndCols", 2, "r1,r2", BottSwapRowsAndCols, "bott.c:BottSwapRowsAndCols" },
+    { "BottConditionalAddCol", 1, "k", BottConditionalAddCol, "bott.c:BottConditionalAddCol" },
+    { "BottConditionalAddRow", 2, "l,m", BottConditionalAddRow, "bott.c:BottConditionalAddRow" },
+    { "BottEncodeMat"     , 0, ""      , BottEncodeMat      , "bott.c:BottEncodeMat" },
+    { "BottEncodeAux"     , 0, ""      , BottEncodeAux      , "bott.c:BottEncodeAux" },
+    { "BottDecodeMat"     , 1, "code"  , BottDecodeMat      , "bott.c:BottDecodeMat" },
+    { "BottIsUpperTriangularMat", 0, "", BottIsUpperTriangularMat, "bott.c:BottIsUpperTriangularMat" },
+    { "BottIsUpperTriangularAux", 0, "", BottIsUpperTriangularAux, "bott.c:BottIsUpperTriangularAux" },
+    { "BottIsUpperTriangularByCode", 1, "code", BottIsUpperTriangularByCode, "bott.c:BottIsUpperTriangularByCode" },
     { 0 }
 };
 
