@@ -69,5 +69,5 @@ AC_SUBST([ENABLE_PROGRESS])
 
 ROOTDIR=$PWD
 AC_SUBST([ROOTDIR])
-AC_CONFIG_FILES([config.h Makefile])
+AC_CONFIG_FILES([config.h Makefile gap.g])
 AC_OUTPUT

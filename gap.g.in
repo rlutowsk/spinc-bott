@@ -1,0 +1,9 @@
+if not IsBound( BOTT_SO ) then
+    BindGlobal( "BOTT_SO" , "@ROOTDIR@/gap.so" );
+fi;
+
+if not IsBound( BottInit ) then
+    LoadDynamicModule( BOTT_SO );
+fi;
+
+Read( "@ROOTDIR@/code.g" );
