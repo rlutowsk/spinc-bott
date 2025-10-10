@@ -76,8 +76,8 @@ static D6PACK_INLINE void d6pack_zero_above_nsquare(key128_t *k, unsigned n)
     }
     memcpy(k->b + 0, &lo, 8); memcpy(k->b + 8, &hi, 8);
     // restore n nibble (in case we cleared b[15])
-    unsigned n0 = d6pack_get_n(k);
-    d6pack_set_n(k, n0 ? n0 : n);
+    // unsigned n0 = d6pack_get_n(k);
+    // d6pack_set_n(k, n0 ? n0 : n);
 }
 
 static D6PACK_INLINE unsigned d6pack_expected_len(unsigned n)
@@ -126,8 +126,8 @@ static D6PACK_INLINE int d6pack_decode(const char *d6, key128_t *out, unsigned *
     }
     memcpy(out->b+0,&lo,8); memcpy(out->b+8,&hi,8);
 #endif
-    d6pack_set_n(out, n);              // put n nibble in b[15]
     d6pack_zero_above_nsquare(out, n); // canon: zero padding
+    d6pack_set_n(out, n);              // put n nibble in b[15]
     if (out_n) *out_n = n;
     return 1;
 }

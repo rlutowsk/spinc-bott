@@ -2,8 +2,55 @@
 #include "common.h"
 #include "dag.h"
 #include "bucket.h"
+#include "adjpack11.h"
 
 #define MAXLINE 128
+
+#include <assert.h>
+
+#define INITIAL_CAPACITY 1024
+
+typedef struct {
+    vec_t *rows;     // flat array of rows
+    size_t len;      // number of matrices stored
+    size_t capacity; // total number of matrices that can be stored
+    size_t dim;      // number of rows per matrix
+} MatArray;
+
+// Create a new MatArray
+MatArray *matarray_create(size_t dim) {
+    MatArray *arr = malloc(sizeof(MatArray));
+    arr->dim = dim;
+    arr->len = 0;
+    arr->capacity = INITIAL_CAPACITY;
+    arr->rows = malloc(sizeof(vec_t) * dim * arr->capacity);
+    return arr;
+}
+
+// Free the MatArray
+void matarray_free(MatArray *arr) {
+    if (arr) {
+        free(arr->rows);
+        free(arr);
+    }
+}
+
+// Append a matrix (vec_t[dim]) to the array
+void matarray_append(MatArray *arr, const vec_t *mat) {
+    if (arr->len >= arr->capacity) {
+        arr->capacity *= 2;
+        arr->rows = realloc(arr->rows, sizeof(vec_t) * arr->dim * arr->capacity);
+        assert(arr->rows != NULL);
+    }
+    memcpy(&arr->rows[arr->len * arr->dim], mat, sizeof(vec_t) * arr->dim);
+    arr->len++;
+}
+
+// Retrieve a pointer to the i-th matrix
+vec_t *matarray_get(MatArray *arr, size_t index) {
+    assert(index < arr->len);
+    return &arr->rows[index * arr->dim];
+}
 
 static ind_t dim = 0;
 
@@ -27,7 +74,7 @@ void help(const char *name)
  * @param aux   Auxiliary matrix stores temporary output of the calculations.
  * @return void
  */
-static inline void add_code(GHashBucket *b, GArray *q, vec_t *aux)
+static inline void add_code(GHashBucket *b, MatArray *q, vec_t *aux)
 {
     char d6buf[MAXLINE];
 
@@ -38,11 +85,11 @@ static inline void add_code(GHashBucket *b, GArray *q, vec_t *aux)
         return;
     }
     if (g_bucket_insert_copy128(b, &k)) {
-        g_array_append_val(q, k);
+        matarray_append(q, aux);
     }
 }
 
-/**
+/*
  * populate_orbit - Populates the orbit of a given code by exploring its transformations.
  * @bucket: Pointer to a GHashBucket used for storing unique codes.
  * @code: The initial code to start orbit generation (as a string).
@@ -56,45 +103,40 @@ static inline void add_code(GHashBucket *b, GArray *q, vec_t *aux)
  *
  * Returns: The original code pointer if successful, or NULL if the input code is NULL.
  */
-static char* populate_orbit(GHashBucket *bucket, char *code, vec_t *mat, vec_t *aux)
+static char* populate_orbit(GHashBucket *bucket, char *code)
 {
     if (code == NULL) {
         return NULL;
     }
 
-    key128_t seedk; d6_to_key128(code, &seedk);
+    vec_t mat[dim], aux[dim];
 
-    GArray *q = g_array_new(FALSE, FALSE, sizeof(key128_t));
+    matrix_from_d6(code, mat, dim);
+
+    MatArray *q = matarray_create(dim);
     guint   h = 0;
 
-    g_array_append_val(q, seedk);
-    // Do not add seedk to the bucket - no need
-
-    char d6buf[MAXLINE];
+    matarray_append(q, mat);
 
     while (h < q->len) {
-        key128_t cur = g_array_index(q, key128_t, h++);
-        key128_to_d6(&cur, d6buf);
-
-        matrix_from_d6(d6buf, mat, dim);
+        vec_t *cur = matarray_get(q, h++);
 
         for (ind_t i=0; i<dim; ++i) {
-            conditional_add_col(mat, aux, dim, i);
+            conditional_add_col(cur, aux, dim, i);
             add_code(bucket, q, aux);
         }
         for (ind_t i=0; i<dim; ++i) {
             for (ind_t j=i+1; j<dim; ++j) {
-                if (conditional_add_row(mat, aux, dim, i, j)) {
+                if (conditional_add_row(cur, aux, dim, i, j)) {
                     add_code(bucket, q, aux);
                 }
-                if (conditional_add_row(mat, aux, dim, j, i)) {
+                if (conditional_add_row(cur, aux, dim, j, i)) {
                     add_code(bucket, q, aux);
                 }
             }
         }
     }
-    printlog(3, "%s queue length: %u", code, q->len);
-    g_array_free( q, TRUE );
+    matarray_free( q );
 
     return code;
 }
@@ -183,29 +225,10 @@ int main(int argc, char *argv[])
     }
     init_nauty_data( dim );
 
-    vec_t *mat = init( dim );
-    if (mat == NULL) {
-        fprintf(stderr, "mat allocation error\n");
-        // g_bucket_destroy( code_set );
-        exit(1);
-    }
-    vec_t *aux = init( dim );
-    if (aux == NULL) {
-        fprintf(stderr, "mat allocation error\n");
-        // g_bucket_destroy( code_set );
-        exit(1);
-    }
-
     char d6[MAXLINE];
     // digraph6_to_matrix(line, mat, dim);
     d6_to_d6_canon(line, d6);
 
-    /* this auto shard calculation seems not to work as expected 
-    if (m != 0) {
-        n = shards_for_cap_limit( m*1000000ULL, 1.15, 0.80, 21 );
-        printlog(1, "peak value (-m) set, calculated number of shards: %u", n);
-    }
-    */
     // create a hash table bucket
     GHashBucket* code_set = g_bucket_new_128(
         g_free,        // Function to free the key when the bucket is destroyed
@@ -214,10 +237,8 @@ int main(int argc, char *argv[])
     );
     g_bucket_reserve(code_set, m*1000000ULL);
 
-    populate_orbit(code_set, d6, mat, aux);
+    populate_orbit(code_set, d6);
     fprintf(out, "%s\n", d6);
-
-    //gsize reps = 1;
 
     GBucketThreadData thread_data = { code_set, TRUE, t*1000000, 1, 1 };
     GThread *print_thread;
@@ -227,9 +248,10 @@ int main(int argc, char *argv[])
 
     while (fgets(line, MAXLINE, in) != NULL) {
         ++thread_data.lines;
-        // transform to canonical form
+        /* transform to canonical form */
         d6_to_d6_canon(line, d6);
-        key128_t repkey; d6_to_key128(d6, &repkey);
+        key128_t repkey;
+        d6_to_key128(d6, &repkey);
         // try to delete; if succesful, then continue
         if ( g_bucket_remove(code_set, &repkey) ) {
             continue;
@@ -239,7 +261,7 @@ int main(int argc, char *argv[])
         fprintf(out, "%s\n", d6);
         ++thread_data.reps;
         // populate orbit
-        populate_orbit(code_set, d6, mat, aux);
+        populate_orbit(code_set, d6);
     }
 
     printlog(1, "%u representatives found", thread_data.reps);
@@ -250,8 +272,6 @@ int main(int argc, char *argv[])
     }
 
     free_nauty_data();
-    free( mat );
-    free( aux );
 
     // final cleaning up
     if (code_set) {

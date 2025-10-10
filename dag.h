@@ -80,6 +80,8 @@ int matrix_from_d6(char *s, vec_t *mat, ind_t dim);
  */
 char* matrix_to_d6_canon(const vec_t *mat, int dim, char *dag_gcode);
 
+vec_t* matrix_to_matrix_canon(const vec_t *mat, int n, vec_t *out);
+
 char* d6_to_d6_canon(char *src, char *dst);
 
 char *d6_to_d6_upper(char *src, char *dst);
