@@ -1,37 +1,106 @@
-CFLAGS := -I. @CFLAGS@ @WARNINGS@
-
-SRC := count.c backtrack.c
-APP := $(patsubst %.c, %, $(SRC)) 
-LIB := gap.so
-TARGETS := $(APP) $(LIB)
-OBJ  := bott.o common.o
-LOBJ := $(patsubst %.o, %.lo, $(OBJ))
-
-CC = gcc
+# --- compilers ---
+CC  = gcc
 GAC = gac
 
-all: $(TARGETS)
+# -- initial flags ---
+CFLAGS  ?=
+CFLAGS  += -I. @WARNINGS@ @APP_CFLAGS@
+LDFLAGS ?=
 
+# -- Sources and targets ---
+OPENMP_SRC := mats.c backtrack.c 
+OPENMP_APP := $(patsubst %.c, %, $(OPENMP_SRC))
+
+NAUTY_SRC := mats.c backtrack.c orientedg.c upperg.c upperf.c canonicalg.c uniqueg.c spinf.c spincf.c orbitg.c
+NAUTY_APP := $(patsubst %.c, %, $(NAUTY_SRC))
+
+APP  := $(sort ${OPENMP_APP} ${NAUTY_APP})
+OBJ  := bott.o common.o dag.o bucket.o
+LIB  := gap.so
+LOBJ := $(patsubst %.o, %.lo, $(OBJ))
+
+TARGETS := $(APP) $(LIB)
+
+# --- list of object files for application targets ---
+APP_OBJ := $(APP:%=%.o)
+
+# --- automatic dependency files (for all .o files, including app ones) ---
+DEPS := $(patsubst %.o,%.d,$(OBJ) $(APP_OBJ))
+
+# -- main targets ---
+.PHONY: all app debug profile sanitize clean
+all: $(TARGETS)
 app: $(APP)
 
-debug: CFLAGS := -I. -g -O0 @OPENMP_CFLAGS@ @WARNINGS@ -DDEBUG
-debug: app
+# The following rules set compilation and linking flags for the target specified by $(OPENMP_APP).
+# - CFLAGS and LDFLAGS are augmented with OpenMP-specific flags (@OPENMP_CFLAGS@) to enable OpenMP support.
+# - The object files required for building $(OPENMP_APP) are listed in OBJ (bott.o and common.o).
+$(OPENMP_APP): CFLAGS  += @OPENMP_CFLAGS@
+$(OPENMP_APP): LDFLAGS += @OPENMP_CFLAGS@
+$(OPENMP_APP): OBJ     := bott.o common.o
 
-profile: CFLAGS := -I. -pg @CFLAGS@ @WARNINGS@ -fno-inline
-profile: app
+# The following rules configure the build for the $(NAUTY_APP) target:
+# - CFLAGS are extended with compiler flags for Nauty, GLib, and XXHash libraries.
+# - LDFLAGS are extended with runtime path and linker flags for Nauty, GLib, and XXHash libraries.
+# - OBJ specifies the object files required to build $(NAUTY_APP).
+$(NAUTY_APP): CFLAGS  += @NAUTY_CFLAGS@ @GLIB_CFLAGS@ @XXHASH_CFLAGS@
+$(NAUTY_APP): LDFLAGS += @RPATH@ @NAUTY_LIBS@ @GLIB_LIBS@ @XXHASH_LIBS@
+$(NAUTY_APP): OBJ     := bott.o common.o dag.o bucket.o
 
-$(APP): $(SRC) $(OBJ)
-	$(CC) -o $@ $@.c $(CFLAGS) $(OBJ)
+# The following rule appends additional compiler flags (@APP_CFLAGS@) to all application targets in $(APP).
+# This allows for custom flags to be specified for all application builds, independent of other target-specific flags.
+# $(APP): CFLAGS += @APP_CFLAGS@
 
-%.o: %.c %.h
-	$(CC) -o $@ $< -c $(CFLAGS)
+# Additional includes for all .o objects (e.g., nauty include)
+# %.o: CFLAGS += @NAUTY_CFLAGS@
 
-%.lo: %.c %.h
+# This rule modifies the CFLAGS for compiling bucket.o by appending GLIB and XXHASH specific flags.
+# It also specifies that bucket.o depends on the header file d6pack11.h, ensuring that changes to the header trigger recompilation.
+bucket.o: CFLAGS += @GLIB_CFLAGS@ @XXHASH_CFLAGS@
+bucket.o: d6pack11.h
+
+# --- building applications ---
+# Each app: links its own %.o and shared $(OBJ)
+$(APP): %: %.o $(OBJ)
+	$(CC) -o $@ $@.o $(OBJ) $(LDFLAGS)
+
+
+# --- object compilation rules with automatic dependencies ---
+# Generate .d (header dependencies) alongside .o
+# -MMD: generate dependencies only for user headers; -MP: add phony targets for missing headers
+%.o: %.c
+	$(CC) -MMD -MP -c $(CFLAGS) -o $@ $<
+
+# --- building gap library ---
+# Compile .lo files from .c sources using GAC, depending on their headers and config.h
+%.lo: %.c %.h config.h
 	$(GAC) -o $@ $< -c -p "$(CFLAGS)"
 
-%.so: CFLAGS := -I. @CFLAGS@
+# Add Nauty and GLib flags for building the shared library
+%.so: CFLAGS += @NAUTY_CFLAGS@ @GLIB_CFLAGS@
+# Build the shared library (.so) from .c source and .lo objects using GAC
 %.so: %.c $(LOBJ)
-	$(GAC) -d $< -o $@ -p "$(CFLAGS)" -L "$(LOBJ)"
+	$(GAC) -d $< -o $@ -p "$(CFLAGS)" -L "$(LOBJ) $(LDFLAGS)"
 
+# -- profile/debug/sanitize build chains ---
+# These targets override CFLAGS for special build types and build all apps.
+# 'debug' enables debug symbols and disables optimizations.
+# 'profile' enables profiling instrumentation.
+# 'sanitize' enables address sanitizer and debug info.
+
+debug: CFLAGS := -I. -g -O0 @OPENMP_CFLAGS@ @CPPFLAGS@ @WARNINGS@ -DDEBUG
+debug: app
+
+profile: CFLAGS := -I. -pg @CFLAGS@ @CPPFLAGS@ @WARNINGS@ -fno-inline
+profile: app
+
+sanitize: CFLAGS := -I. -g -O2 -fsanitize=address -fno-omit-frame-pointer @OPENMP_CFLAGS@ @CPPFLAGS@ @WARNINGS@ 
+sanitize: app
+
+
+# --- Include generated header dependencies (if they exist) ---
+-include $(DEPS)
+
+# -- remove all built targets and object files ---
 clean:
-	@rm $(wildcard $(TARGETS) $(OBJ) $(LOBJ))
+	@rm -f $(wildcard $(TARGETS) $(OBJ) $(APP_OBJ) $(LOBJ) $(DEPS))

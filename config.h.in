@@ -7,4 +7,8 @@
     #define RBM_SHOW_PROGRESS
 #endif
 
+#ifndef USE_NAUTY
+#define USE_NAUTY 0
+#endif
+
 #endif
