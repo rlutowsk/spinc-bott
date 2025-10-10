@@ -217,6 +217,38 @@ char* matrix_to_d6_canon(const vec_t *mat, int n, char *dag_gcode)
     return graph_to_d6(dag_canong, dag_m, dag_n, dag_gcode);
 }
 
+vec_t* matrix_to_matrix_canon(const vec_t *mat, int n, vec_t *out)
+{
+    if (out == NULL) {
+        return NULL;
+    }
+
+    EMPTYGRAPH(dag_g, dag_m, dag_n);
+
+    for (int i=0; i<dag_n; i++) {
+        if (row_sum(mat[i]) == 0) {
+            continue;
+        }
+        for (int j=0; j<dag_n; j++) {
+            if ( C(mat[i], dag_n, j) ) {
+                ADDONEARC(dag_g, i, j, dag_m);
+            }
+        }
+    }
+    generate_canon_digraph(dag_m, dag_n);
+    
+    for (int i=0; i<dag_n; ++i) {
+        out[i]  = 0;
+        set *gi = GRAPHROW(dag_canong,i,dag_m);
+        for (int j=0; j<dag_n; ++j) {
+            if (ISELEMENT(gi,j)) {
+                out[i] |= 1UL<<j;
+            }
+        }
+    }
+    return out;
+}
+
 char* d6_to_d6_canon(char *src, char *dst)
 {
     EMPTYGRAPH( dag_g, dag_m, dag_n );
