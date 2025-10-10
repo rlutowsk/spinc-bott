@@ -1,7 +1,7 @@
 #ifndef BOTT_H
 #define BOTT_H
 
-#include <config.h>
+#include "config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,22 +49,42 @@ void populate_cache(vec_t **cache, size_t *size, const ind_t dim);
 vec_t *init(const ind_t dim);
 
 /* set values of rows of RBM matrix dpending on state */
-void set(vec_t *mat, const vec_t *cache, const state_t state, const ind_t dim);
+void matrix_by_state(vec_t *mat, const vec_t *cache, const state_t state, const ind_t dim);
+
+int is_upper_triangular(const vec_t *mat, const ind_t dim);
 
 /* main workers of this app */
 size_t is_spinc(const vec_t *mat, const ind_t dim);
-size_t is_spin(const vec_t *mat, const ind_t dim);
+
+static inline int row_sum(vec_t r)
+{
+#if VEC_T_SIZE == 64
+    return __builtin_popcountl(r);
+#else
+    return __builtin_popcount(r);
+#endif
+}
+
+int is_spin(const vec_t *mat, const ind_t dim);
 
 void print_mat(const vec_t *mat, const ind_t dim);
+
+extern const ind_t mat_characters[];
 
 void encode_matrix(const vec_t *mat, const ind_t dim, char *buffer);
 
 void decode_matrix(vec_t *mat, const ind_t dim, const char *buffer);
 
+char* matrix_to_digraph6(const vec_t *mat, int dim);
+
+int digraph6_to_matrix(const char *digraph6_str, vec_t *matrix, int n);
+
 void swap_rows_and_cols(vec_t *src, vec_t *dst, ind_t dim, ind_t r1, ind_t r2);
 
 void conditional_add_col(vec_t *src, vec_t *dst, ind_t dim, ind_t k);
 
-void conditional_add_row(vec_t *src, vec_t *dst, ind_t dim, ind_t l, ind_t m);
+int conditional_add_row(vec_t *src, vec_t *dst, ind_t dim, ind_t l, ind_t m);
+
+int matrix_weight(const vec_t *mat, const ind_t dim);
 
 #endif /* BOTT_H */
