@@ -1,0 +1,15 @@
+if not IsBound( BOTT_SO ) then
+    BindGlobal( "BOTT_SO" , "@ROOTDIR@/gap.so" );
+fi;
+
+if not IsBound( BottInit ) then
+    LoadDynamicModule( BOTT_SO );
+fi;
+
+BottCalcInfo := NewInfoClass("BottCalcInfo");
+BottCalcInfoPrefix := "";
+
+# Read( "@ROOTDIR@/code.g" );
+# Read( "@ROOTDIR@/redis.g" );
+Read( "@ROOTDIR@/avl.g" );
+Read( "@ROOTDIR@/dict.g" );

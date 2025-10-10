@@ -20,8 +20,9 @@ void printlog(unsigned int v, const char *format, ...)
     if (v>verbosity_level) {
         return;
     }
-    printf("[%.6f] ", toc_sec());
+    fprintf(stderr, "[%.3f] ", toc_sec());
     va_start(argptr, format);
-    vfprintf(stdout, format, argptr);
+    vfprintf(stderr, format, argptr);
+    fprintf(stderr, "\n");
     va_end(argptr);
 }
