@@ -157,7 +157,7 @@ static bool is_orbit_minimum(const key128_t *seedk) {
             adjpack_from_matrix(canon_neighbor, dim, &k);
 
             // Minimality test: neighbor < canonical seed?
-            if (k.u < seed_can_key.u) { is_min = false; goto cleanup; }
+            if (key128_lt(&k, &seed_can_key)) { is_min = false; goto cleanup; }
 
             // First time we see this canonical element? Enqueue the NON-CANON aux
             if (!flat_lookup(&visited_set, &k) && flat_insert(&visited_set, &k)) {
@@ -174,7 +174,7 @@ static bool is_orbit_minimum(const key128_t *seedk) {
                     matrix_to_matrix_canon(aux, dim, canon_neighbor);
                     //key128_t k;
                     adjpack_from_matrix(canon_neighbor, dim, &k);
-                    if (k.u < seed_can_key.u) { is_min = false; goto cleanup; }
+                    if (key128_lt(&k, &seed_can_key)) { is_min = false; goto cleanup; }
                     if (!flat_lookup(&visited_set, &k) && flat_insert(&visited_set, &k)) {
                         matarray_append(q, aux);
                     }
@@ -186,7 +186,7 @@ static bool is_orbit_minimum(const key128_t *seedk) {
                     matrix_to_matrix_canon(aux, dim, canon_neighbor);
                     // key128_t k;
                     adjpack_from_matrix(canon_neighbor, dim, &k);
-                    if (k.u < seed_can_key.u) { is_min = false; goto cleanup; }
+                    if (key128_lt(&k, &seed_can_key)) { is_min = false; goto cleanup; }
                     if (!flat_lookup(&visited_set, &k) && flat_insert(&visited_set, &k)) {
                         matarray_append(q, aux);
                     }

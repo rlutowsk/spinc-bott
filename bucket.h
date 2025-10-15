@@ -151,6 +151,14 @@ static inline gboolean key128_equal(const key128_t* a, const key128_t* b) {
 #endif
 }
 
+static inline gboolean key128_lt(const key128_t* a, const key128_t* b) {
+#if defined(__SIZEOF_INT128__)
+    return a->u < b->u;
+#else
+    return memcmp(a, b, 16) < 0;
+#endif
+}
+
 /* Mode probe (optional; handy for assertions in debugging). */
 gboolean g_bucket_is_flat128 (GHashBucket *b);
 
