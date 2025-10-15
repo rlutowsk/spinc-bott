@@ -26,12 +26,12 @@ static void help(const char *name)
         name);
 }
 
-/* --- Z oryginału: get_max_state() --- */
+/* --- get maximal possible state of the oriented RBM matrix --- */
 static inline state_t get_max_state(ind_t dim)
 {
     ind_t c;
     state_t max_state;
-    for (c = 0, max_state = 1; c < dim - 1; c++) {
+    for (c = 0, max_state = 1; c < dim - 1; ++c) {
         max_state <<= (dim - c - 2);
     }
     return max_state - 1;
@@ -40,13 +40,13 @@ static inline state_t get_max_state(ind_t dim)
 /* global */
 int calculate_spin = 0;
 
-/* --- I/O bufor per‑task dla kodów d6 --- */
+/* --- I/O buffer per‑task for d6 codes --- */
 struct out_ctx {
-    int enabled;        /* czy włączono -o */
-    FILE *fp;           /* dokąd pisać (stdout/plik) */
-    char *buf;          /* bufor dla batchowego I/O */
-    size_t used;        /* ile bajtów zajęte */
-    size_t cap;         /* pojemność bufora */
+    int enabled;        /* whether -o is enabled */
+    FILE *fp;           /* where to write (stdout/file) */
+    char *buf;          /* buffer for batched I/O */
+    size_t used;        /* how many bytes are used */
+    size_t cap;         /* buffer capacity */
 };
 #define OUTBUF_CAP (1u<<20) /* ~1 MiB per task */
 
@@ -73,35 +73,38 @@ static inline void out_append_line(struct out_ctx *out, const char *line)
     out->buf[out->used++] = '\n';
 }
 
+/* --- Small helpers --- */
 static inline void increase_dimension(vec_t *mat, ind_t dim)
 {
-    for (ind_t i = 1; i < dim; i++) { mat[i] <<= 1; }
+    for (ind_t i = 1; i < dim; ++i) { mat[i] <<= 1; }
 }
 static inline void decrease_dimension(vec_t *mat, ind_t dim)
 {
-    for (ind_t i = 1; i < dim; i++) { mat[i] >>= 1; }
+    for (ind_t i = 1; i < dim; ++i) { mat[i] >>= 1; }
 }
 
-/* --- Deklaracje --- */
+/* --- Declarations --- */
 size_t backtrack(vec_t *mat, vec_t **cache, ind_t cdim, ind_t ddim,
                  size_t *spinc, size_t *spin, struct out_ctx *out);
 
-/* --- Monitor postępu: drukuje na wskazany strumień (stderr przy -o) --- */
+/* --- Progress monitor: prints to the specified stream (stderr with -o) --- */
 static void monitor_progress(unsigned long *progress_ptr, unsigned long total, FILE *stream)
 {
     const double period = 0.25;
     double next = omp_get_wtime();
     struct timespec ts = { .tv_sec = 0, .tv_nsec = 50 * 1000 * 1000 }; /* 50 ms */
+    unsigned long cur;
+    double now, pct;
 
-    for (;;) {
-        unsigned long cur;
+    for (;;) {    
         #pragma omp atomic read
-        cur = *progress_ptr;
+            cur = *progress_ptr;
+        
         if (cur >= total) break;
 
-        double now = omp_get_wtime();
+        now = omp_get_wtime();
         if (now >= next) {
-            double pct = (total == 0) ? 100.0 : (100.0 * (double)cur / (double)total);
+            pct = (total == 0) ? 100.0 : (100.0 * (double)cur / (double)total);
             fprintf(stream, "\33[2K\r%8.4f%%", pct);
             fflush(stream);
             next = now + period;
@@ -110,77 +113,14 @@ static void monitor_progress(unsigned long *progress_ptr, unsigned long total, F
     }
 }
 
-/* --- Właściwe backtrack: identyczna logika jak w Twojej wersji, + opcjonalny zapis kodów d6 --- */
-size_t backtrack(vec_t *mat, vec_t **cache, ind_t cdim, ind_t ddim,
-                 size_t *spinc, size_t *spin, struct out_ctx *out)
-{
-    vec_t max = 1 << (cdim - 2);
-    vec_t r;
-    vec_t row = ddim - cdim;
-
-    increase_dimension(mat, ddim);
-
-    if (row == 0) {
-        /*
-         * final step:
-         * nie trzeba liczyć macierzy [0 000; 0 mat]; spinc info z mat identyczne
-         */
-        char code_buf[256];
-
-        mat[0] = 0;
-        *spinc += 1;
-        if (out && out->enabled) {
-            matrix_to_d6(mat, ddim, code_buf);
-            out_append_line(out, code_buf);
-        }
-
-        if (calculate_spin) {
-            *spin += is_spin(mat, ddim);
-            for (r = 1; r < max; r++) {
-                mat[0] = cache[ddim][r];
-                if (is_spinc(mat, ddim)) {
-                    *spinc += 1;
-                    *spin  += is_spin(mat, ddim);
-                    if (out && out->enabled) {
-                        matrix_to_d6(mat, ddim, code_buf);
-                        out_append_line(out, code_buf);
-                    }
-                }
-            }
-        } else {
-            for (r = 1; r < max; r++) {
-                mat[0] = cache[ddim][r];
-                if (is_spinc(mat, ddim)) {
-                    *spinc += 1;
-                    if (out && out->enabled) {
-                        matrix_to_d6(mat, ddim, code_buf);
-                        out_append_line(out, code_buf);
-                    }
-                }
-            }
-        }
-    } else {
-        /* rekurencja */
-        for (r = 0; r < max; r++) {
-            mat[row] = cache[cdim][r];
-            if (is_spinc(&mat[row], cdim)) {
-                backtrack(mat, cache, cdim + 1, ddim, spinc, spin, out);
-                /* po każdym zejściu zmniejszamy wymiar, bo następne wołanie znów go zwiększy */
-                decrease_dimension(mat, ddim);
-            }
-        }
-    }
-    return *spinc;
-}
-
 /* -------------------- main -------------------- */
 int main(int argc, char *argv[])
 {
-    int opt = 1, bs = -1, no_output = 0;
+    int opt = 1, no_output = 0;
     state_t test = 0;
     int progress_enabled = 0;
 
-    /* domyślne wartości */
+    /* defaults */
     ind_t sdim = 0, dim = 6;
     vec_t *cache[12] = { 0,0,0,0,0,0,0,0,0,0,0,0 };
 
@@ -196,12 +136,11 @@ int main(int argc, char *argv[])
 
     tic();
 
-    while ((opt = getopt(argc, argv, "vhj:d:s:ac:npt:o:")) != -1) {
+    while ((opt = getopt(argc, argv, "vhj:d:s:anpt:o:")) != -1) {
         switch (opt) {
         case 't': test = atol(optarg); break;
         case 'p': progress_enabled = 1; break;
         case 'n': no_output = 1; break;
-        case 'c': bs = atoi(optarg); break;
         case 'a': calculate_spin = 1; break;
         case 'v': verbosity_level++; break;
         case 'j': omp_set_num_threads(atoi(optarg)); break;
@@ -222,7 +161,7 @@ int main(int argc, char *argv[])
     }
 
     /* cache */
-    for (int i = sdim; i < 12; i++) {
+    for (int i = sdim; i < 12; ++i) {
         vec_t *tmp;
         populate_cache(&tmp, &cache_size, i);
         cache[i] = tmp;
@@ -230,12 +169,6 @@ int main(int argc, char *argv[])
 
     state_t max_state = get_max_state(sdim);
     row = dim - sdim;
-
-    /* heurystyka chunk size (historyczna – nie używana bezpośrednio w tasks, ale zostawiona) */
-    if (bs == -1) {
-        bs = 7 * sdim - 49;
-        bs = (bs < 0) ? 0 : bs;
-    }
 
     if (test > 0) {
         loop_start = (max_state + 1) / 2;
@@ -245,7 +178,7 @@ int main(int argc, char *argv[])
         loop_stop  = max_state;
     }
 
-    /* -o: otwarcie wyjścia */
+    /* -o: open output */
     if (output_enabled) {
         if (strcmp(out_path, "-") == 0 || strcasecmp(out_path, "stdout") == 0) {
             out_fp = stdout;
@@ -260,7 +193,7 @@ int main(int argc, char *argv[])
 
     const unsigned long total_iters = (unsigned long)(loop_stop - loop_start + 1);
 
-    /* dobór ziarnistości tasków: ~8 zadań na wątek, z bezpiecznymi limitami */
+    /* task granularity selection: ~8 tasks per thread, with safe limits */
     int nthreads = omp_get_max_threads();
     unsigned long target_tasks = (unsigned long)(nthreads > 0 ? nthreads : 1) * 8ul;
     unsigned long grain = (total_iters + target_tasks - 1) / (target_tasks ? target_tasks : 1);
@@ -271,7 +204,7 @@ int main(int argc, char *argv[])
              (unsigned long)loop_start, (unsigned long)loop_stop, total_iters);
     printlog(2, "openmp task grain set to %lu iterations\n", grain);
 
-    /* postęp i strumienie */
+    /* progress and streams */
     static unsigned long progress = 0;
     #pragma omp atomic write
     progress = 0;
@@ -279,11 +212,11 @@ int main(int argc, char *argv[])
     FILE *progress_stream = output_enabled ? stderr : stdout;
     FILE *summary_stream  = (output_enabled ? stderr : stdout);
 
-    /* ------------------ Równoległość (zadania) ------------------ */
+    /* ------------------ Parallelism (tasks) ------------------ */
     #pragma omp parallel
     #pragma omp single nowait
     {
-        /* monitor postępu */
+        /* progress monitor */
         if (progress_enabled) {
             #pragma omp task untied firstprivate(total_iters, progress_stream)
             {
@@ -291,7 +224,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        /* zadania robocze */
+        /* worker tasks */
         #pragma omp taskgroup
         {
             for (unsigned long base = (unsigned long)loop_start; base <= (unsigned long)loop_stop; ) {
@@ -325,14 +258,14 @@ int main(int argc, char *argv[])
                         }
                     }
 
-                    /* spłucz bufor kodów i sprzątnij */
+                    /* flush the code buffer and clean up */
                     if (out.enabled) {
                         out_flush(&out);
                         free(out.buf);
                     }
                     free(tmat);
 
-                    /* aktualizacja liczników globalnych */
+                    /* update global counters */
                     #pragma omp atomic update
                     spinc += local_spinc;
                     if (calculate_spin) {
@@ -340,10 +273,10 @@ int main(int argc, char *argv[])
                         spin += local_spin;
                     }
 
-                    /* postęp: cały chunk jednym atomikiem */
+                    /* progress: entire chunk with a single atomic update */
                     unsigned long done = (unsigned long)(end - base + 1);
                     #pragma omp atomic update
-                    progress += done;
+                        progress += done;
                 }
 
                 if (end == (unsigned long)loop_stop) break;
@@ -351,7 +284,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        /* domknij postęp */
+        /* finalize progress */
         #pragma omp atomic write
         progress = total_iters;
     }
@@ -361,7 +294,7 @@ int main(int argc, char *argv[])
         fflush(progress_stream);
     }
 
-    /* Log końcowy */
+    /* Final log */
     if (calculate_spin) {
         printlog(1, "calculations finished: %lu/%lu spin/spinc manifolds in total\n",
                  (unsigned long)spin, (unsigned long)spinc);
@@ -370,7 +303,7 @@ int main(int argc, char *argv[])
                  (unsigned long)spinc);
     }
 
-    /* Finalne podsumowanie liczbowe (stderr przy -o, aby nie mieszać się z kodami na stdout/plik) */
+    /* Final summary (stderr when -o, to avoid mixing with codes on stdout/file) */
     if (!no_output) {
         if (calculate_spin) {
             fprintf(summary_stream, "%lu/%lu\n", (unsigned long)spin, (unsigned long)spinc);
@@ -380,13 +313,80 @@ int main(int argc, char *argv[])
         fflush(summary_stream);
     }
 
-    /* zamknij plik, jeśli to nie stdout */
+    /* close the file if it's not stdout */
     if (output_enabled && out_fp && out_fp != stdout) {
         fclose(out_fp);
     }
 
-    /* sprzątanie cache */
-    for (int i = sdim; i < 12; i++) { free(cache[i]); }
+    /* clean up cache */
+    for (int i = sdim; i < 12; ++i) { free(cache[i]); }
 
     return 0;
+}
+
+/* --- Actual backtrack --- */
+size_t backtrack(vec_t *mat, vec_t **cache, ind_t cdim, ind_t ddim,
+                 size_t *spinc, size_t *spin, struct out_ctx *out)
+{
+    vec_t max = 1 << (cdim - 2);
+    vec_t r;
+    vec_t row = ddim - cdim;
+
+    increase_dimension(mat, ddim);
+
+    if (row == 0) {
+        /*
+         * final step:
+         * no need to calculate for row 0:
+         * [0 000]
+         * [0 mat]
+         * since it is spinc iff mat is
+         */
+        mat[0] = 0;
+        *spinc += 1;
+
+        /* d6 code output only in the last recursion step */
+        char code_buf[256];
+        if (out && out->enabled) {
+            matrix_to_d6(mat, ddim, code_buf);
+            out_append_line(out, code_buf);
+        }
+
+        if (calculate_spin) {
+            *spin += is_spin(mat, ddim);
+            for (r = 1; r < max; ++r) {
+                mat[0] = cache[ddim][r];
+                if (is_spinc(mat, ddim)) {
+                    *spinc += 1;
+                    *spin  += is_spin(mat, ddim);
+                    if (out && out->enabled) {
+                        matrix_to_d6(mat, ddim, code_buf);
+                        out_append_line(out, code_buf);
+                    }
+                }
+            }
+        } else {
+            for (r = 1; r < max; ++r) {
+                mat[0] = cache[ddim][r];
+                if (is_spinc(mat, ddim)) {
+                    *spinc += 1;
+                    if (out && out->enabled) {
+                        matrix_to_d6(mat, ddim, code_buf);
+                        out_append_line(out, code_buf);
+                    }
+                }
+            }
+        }
+    } else {
+        /* recursion */
+        for (r = 0; r < max; ++r) {
+            mat[row] = cache[cdim][r];
+            if (is_spinc(&mat[row], cdim)) {
+                backtrack(mat, cache, cdim + 1, ddim, spinc, spin, out);
+                /* after each recursion we decrease the dimension, because the next call will increase it again */
+                decrease_dimension(mat, ddim);
+            }
+        }
+    }
+    return *spinc;
 }

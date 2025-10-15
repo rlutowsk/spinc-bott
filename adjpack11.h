@@ -17,8 +17,8 @@
 # define ADJPACK_UNLIKELY(x) (x)
 #endif
 
-#define ADJPACK_N_BYTE 15u
-#define ADJPACK_N_SHIFT 4u
+#define ADJPACK_N_BYTE   15u
+#define ADJPACK_N_SHIFT   4u
 #define ADJPACK_N_MASK 0x0Fu
 
 static ADJPACK_INLINE void adjpack_set_n(key128_t *k, unsigned n) {
@@ -69,8 +69,9 @@ static ADJPACK_INLINE void adjpack_from_matrix(const vec_t *mat, unsigned n, key
     assert(n >= 1 && n <= 11);
 #if D6PACK_HAVE_UINT128
 	out->u = 0;
+    uint64_t row;
     for (unsigned i = 0; i < n; ++i) {
-        uint64_t row = bitreverse64(mat[i]) >> (64 - n);
+        row = bitreverse64(mat[i]) >> (64 - n);
         out->u <<= n;
         out->u |= row;
     }
@@ -98,21 +99,10 @@ static ADJPACK_INLINE void adjpack_from_matrix(const vec_t *mat, unsigned n, key
 // Unpacks key128_t into adjacency matrix mat[n]
 static ADJPACK_INLINE void adjpack_to_matrix(const key128_t *k, uint64_t *mat_out, unsigned n) {
     assert(n >= 1 && n <= 11);
-    //memset(mat_out, 0, n * sizeof(uint64_t));
 #if D6PACK_HAVE_UINT128
-    /*
-    __uint128_t acc = k->u;
-    for (unsigned i = 0; i < n; ++i) {
-        for (unsigned j = 0; j < n; ++j) {
-            unsigned bitpos = n * n - 1 - (i * n + j);
-            uint64_t bit = (acc >> bitpos) & 1;
-            mat_out[i] |= bit << j;
-        }
-    }
-    */
     __uint128_t acc = k->u;
     for (int i = n-1; i >= 0; --i) {
-        mat_out[i] = bitreverse64(acc) >> (64 - n);
+        mat_out[i] = bitreverse64((uint64_t)acc) >> (64 - n);
         acc >>= n;
     }
 #else
