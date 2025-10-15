@@ -3,8 +3,8 @@
 
 #include "config.h"
 
-#include "nauty.h"
-#include "gtools.h"
+#include <nauty.h>
+#include <gtools.h>
 
 /**
  * @brief Converts a nauty graph to a digraph6 (d6) string representation.

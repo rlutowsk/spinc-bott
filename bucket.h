@@ -6,13 +6,39 @@
 #include <stddef.h>
 #include <math.h>
 #include <xxhash.h>
+#include <nauty.h>
 
-#if HAVE_TLS==1
+
+#if defined(HAVE_TLS) && (HAVE_TLS == 1)
+  #define NAUTY_HAS_TLS 1
+#else
+  #define NAUTY_HAS_TLS 0
+#endif
+
+
+#if NAUTY_HAS_TLS
+
 #   define G_MUTEX_LOCK(x)   g_mutex_lock(x)
 #   define G_MUTEX_UNLOCK(x) g_mutex_unlock(x)
+
+#   include <stdatomic.h>
+#   define ATOMIC_ATTR _Atomic
+
+#   define ATOMIC_GET(x) atomic_load_explicit(&(x), memory_order_relaxed)
+#   define ATOMIC_INC(x) atomic_fetch_add_explicit(&(x), 1, memory_order_relaxed)
+#   define ATOMIC_DEC(x) atomic_fetch_sub_explicit(&(x), 1, memory_order_relaxed)
+
 #else
+
 #   define G_MUTEX_LOCK(x)
 #   define G_MUTEX_UNLOCK(x)
+
+#   define ATOMIC_ATTR
+
+#define ATOMIC_GET(x) (x)
+#define ATOMIC_INC(x) ((x)++)
+#define ATOMIC_DEC(x) ((x)--)
+
 #endif
 
 #if HASH_MIXED_MODE == 1
@@ -34,6 +60,20 @@ typedef union {
 #endif
 } key128_t;
 #endif
+
+/* ---- Internal flat open-addressing set for 16/32-byte keys ---- */
+typedef struct {
+    key128_t *keys;   /* inline keys */
+    uint8_t  *ctrl;   /* 0=empty, 1=full, 2=deleted */
+    size_t    cap;    /* power of two */
+    size_t    size;   /* # FULL slots */
+    size_t    dels;   /* # tombstones */
+} FlatSet;
+void flat_init(FlatSet *s, size_t cap_hint);
+void flat_free(FlatSet *s);
+gboolean flat_lookup(const FlatSet *s, const key128_t *k);
+gboolean flat_remove(FlatSet *s, const key128_t *k);
+gboolean flat_insert(FlatSet *s, const key128_t *k);
 
 /* Opaque bucket type with two backends:
  *  - FLAT128 (open addressing; compact) when used with key128_hash/key128_equal
@@ -107,7 +147,7 @@ static inline gboolean key128_equal(const key128_t* a, const key128_t* b) {
 #if defined(__SIZEOF_INT128__)
     return a->u == b->u;
 #else
-    return memcmp(A, B, 16) == 0;
+    return memcmp(a, b, 16) == 0;
 #endif
 }
 
@@ -128,7 +168,7 @@ static inline void d6_to_key128(const char* d6, key128_t* out) {
     d6pack_decode(d6, out, &n);
 #endif
 }
-static inline void key128_to_d6(const key128_t* k, char *out_d6) {
+static inline char* key128_to_d6(const key128_t* k, char *out_d6) {
 #ifndef D6PACK11_H
     const unsigned char *p = k->b;
     size_t L = 0; while (L < K_LEN && p[L] != 0) ++L;
@@ -137,6 +177,7 @@ static inline void key128_to_d6(const key128_t* k, char *out_d6) {
 #else
     d6pack_encode_from_key(k, out_d6);
 #endif
+    return out_d6;
 }
 
 static inline size_t shards_for_cap_limit(uint64_t total_expected,

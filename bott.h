@@ -81,9 +81,9 @@ int digraph6_to_matrix(const char *digraph6_str, vec_t *matrix, int n);
 
 void swap_rows_and_cols(vec_t *src, vec_t *dst, ind_t dim, ind_t r1, ind_t r2);
 
-void conditional_add_col(vec_t *src, vec_t *dst, ind_t dim, ind_t k);
+void conditional_add_col(const vec_t *src, vec_t *dst, ind_t dim, ind_t k);
 
-int conditional_add_row(vec_t *src, vec_t *dst, ind_t dim, ind_t l, ind_t m);
+int conditional_add_row(const vec_t *src, vec_t *dst, ind_t dim, ind_t l, ind_t m);
 
 int matrix_weight(const vec_t *mat, const ind_t dim);
 

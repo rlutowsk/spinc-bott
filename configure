@@ -2869,7 +2869,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 # Checks for programs.
 # AC_PROG_CXX
-APP_CFLAGS='-Ofast -march=native'
+APP_CFLAGS='-O3 -march=native'
 if test -z $CFLAGS; then
     CFLAGS=$APP_CFLAGS
 else

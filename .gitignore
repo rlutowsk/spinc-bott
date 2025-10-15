@@ -1,10 +1,10 @@
-count
-backtrack*
+*
+!*.*
+*.d
 *.lo
 *.o
 *.so
 autom4te.cache
-!*.c
 config.h
 config.log
 config.status

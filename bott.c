@@ -324,7 +324,7 @@ void swap_rows_and_cols(vec_t *src, vec_t *dst, ind_t dim, ind_t r1, ind_t r2)
 }
 
 /* Op2 */
-void conditional_add_col(vec_t *src, vec_t *dst, ind_t dim, ind_t k)
+void conditional_add_col(const vec_t *src, vec_t *dst, ind_t dim, ind_t k)
 {
     vec_t row_k = src[k];
 
@@ -335,7 +335,7 @@ void conditional_add_col(vec_t *src, vec_t *dst, ind_t dim, ind_t k)
 }
 
 /* Op3 */
-int conditional_add_row(vec_t *src, vec_t *dst, ind_t dim, ind_t l, ind_t m)
+int conditional_add_row(const vec_t *src, vec_t *dst, ind_t dim, ind_t l, ind_t m)
 {
     if ( (l==m) || ! (equal_cols(src, dim, l, m)) ) {
         return 0;

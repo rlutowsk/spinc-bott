@@ -48,6 +48,7 @@ void free_nauty_data(void)
     DYNFREE(dag_in_deg, dag_in_deg_sz);
     DYNFREE(dag_queue , dag_queue_sz );
     DYNFREE(dag_order , dag_order_sz );
+    DYNFREE(dag_pos   , dag_pos_sz   );
 
     dag_int_arr_sz = 0;
 }
@@ -70,7 +71,8 @@ char* matrix_to_d6(const vec_t *mat, int dim, char *dag_gcode)
         for (i = 0; i < n; ++i)
         {
             x <<= 1;
-            if (C(mat[j], n, i)) x |= 1;
+            // if (C(mat[j], n, i)) x |= 1;
+            x |= C(mat[j], n, i);
             if (--k == 0)
             {
                 *p++ = (char)(BIAS6 + x);
@@ -111,6 +113,7 @@ int matrix_from_d6(char *s, vec_t *mat, ind_t dim)
     k = 1;
     for (i = 0; i < n; ++i)
     {
+        // mat[i] = 0;
         for (j = 0; j < n; ++j)
         {
             if (--k == 0)
@@ -118,11 +121,13 @@ int matrix_from_d6(char *s, vec_t *mat, ind_t dim)
                 k = 6;
                 x = *(p++) - BIAS6;
             }
-
+            /*
             if ((x & TOPBIT6))
             {
                 mat[i] |= (1ULL << j);
             }
+            */
+            mat[i] |= (vec_t)((x & TOPBIT6)!=0) << j;
             x <<= 1;
         }
     }
@@ -202,16 +207,14 @@ char* matrix_to_d6_canon(const vec_t *mat, int n, char *dag_gcode)
     //int m = SETWORDSNEEDED(n);
 
     EMPTYGRAPH(dag_g, dag_m, dag_n);
-
+    // vec_t mask = ((vec_t)1 << dag_n) - 1;
     for (int i=0; i<dag_n; i++) {
-        if (row_sum(mat[i]) == 0) {
-            continue;
-        }
-        for (int j=0; j<dag_n; j++) {
-            if ( C(mat[i], dag_n, j) ) {
-                ADDONEARC(dag_g, i, j, dag_m);
-            }
-        }
+        vec_t row = mat[i]; // & mask;
+		while (row) {
+			int j = __builtin_ctzl(row);
+			ADDONEARC(dag_g, i, j, dag_m);
+			row ^= ((vec_t)1 << j);
+		}
     }
     generate_canon_digraph(dag_m, dag_n);
     return graph_to_d6(dag_canong, dag_m, dag_n, dag_gcode);
@@ -224,26 +227,24 @@ vec_t* matrix_to_matrix_canon(const vec_t *mat, int n, vec_t *out)
     }
 
     EMPTYGRAPH(dag_g, dag_m, dag_n);
-
+    // vec_t mask = ((vec_t)1 << dag_n) - 1;
+    /* generate graph from mat */
     for (int i=0; i<dag_n; i++) {
-        if (row_sum(mat[i]) == 0) {
-            continue;
-        }
-        for (int j=0; j<dag_n; j++) {
-            if ( C(mat[i], dag_n, j) ) {
-                ADDONEARC(dag_g, i, j, dag_m);
-            }
-        }
+		vec_t row = mat[i]; // & mask;
+		while (row) {
+			int j = __builtin_ctzl(row);
+			ADDONEARC(dag_g, i, j, dag_m);
+			row ^= ((vec_t)1 << j);
+		}
     }
+    /* canonize the graph */
     generate_canon_digraph(dag_m, dag_n);
-    
+    /* generate out from canonical form of the graph */
     for (int i=0; i<dag_n; ++i) {
         out[i]  = 0;
         set *gi = GRAPHROW(dag_canong,i,dag_m);
         for (int j=0; j<dag_n; ++j) {
-            if (ISELEMENT(gi,j)) {
-                out[i] |= 1UL<<j;
-            }
+            out[i] |= ISELEMENT(gi, j) << j;
         }
     }
     return out;

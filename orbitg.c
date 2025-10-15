@@ -76,11 +76,17 @@ void help(const char *name)
  */
 static inline void add_code(GHashBucket *b, MatArray *q, vec_t *aux)
 {
+    /* 
     char d6buf[MAXLINE];
 
     matrix_to_d6_canon(aux, dim, d6buf);
     key128_t k; d6_to_key128(d6buf, &k);
-
+    */
+    // /*
+    vec_t out[dim];
+    matrix_to_matrix_canon(aux, dim, out);
+    key128_t k; adjpack_from_matrix(out, dim, &k);
+    // */
     if ( g_bucket_lookup(b, &k)!=NULL ) {
         return;
     }
@@ -109,27 +115,29 @@ static char* populate_orbit(GHashBucket *bucket, char *code)
         return NULL;
     }
 
-    vec_t mat[dim], aux[dim];
+    vec_t aux[dim];
 
-    matrix_from_d6(code, mat, dim);
+    matrix_from_d6(code, aux, dim);
 
     MatArray *q = matarray_create(dim);
-    guint   h = 0;
 
-    matarray_append(q, mat);
+    matarray_append(q, aux);
 
-    while (h < q->len) {
-        vec_t *cur = matarray_get(q, h++);
+    for (guint h=0; h < q->len; ++h) {
+        vec_t *cur;
 
         for (ind_t i=0; i<dim; ++i) {
+            cur = matarray_get(q, h);
             conditional_add_col(cur, aux, dim, i);
             add_code(bucket, q, aux);
         }
         for (ind_t i=0; i<dim; ++i) {
             for (ind_t j=i+1; j<dim; ++j) {
+                cur = matarray_get(q, h);
                 if (conditional_add_row(cur, aux, dim, i, j)) {
                     add_code(bucket, q, aux);
                 }
+                cur = matarray_get(q, h);
                 if (conditional_add_row(cur, aux, dim, j, i)) {
                     add_code(bucket, q, aux);
                 }

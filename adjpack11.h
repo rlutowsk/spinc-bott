@@ -5,6 +5,7 @@
 #include <string.h>
 #include <assert.h>
 #include "d6pack11.h"
+#include "bott.h"
 
 #if defined(__GNUC__) || defined(__clang__)
 # define ADJPACK_INLINE __attribute__((always_inline)) inline
@@ -33,6 +34,9 @@ static ADJPACK_INLINE unsigned adjpack_get_n(const key128_t *k) {
 static ADJPACK_INLINE void adjpack_zero_above_nsquare(key128_t *k, unsigned n) {
     unsigned L = n * n;
     if (L >= 128) return;
+#if D6PACK_HAVE_UINT128
+	k->u &= (((__uint128_t)1 << L) - 1);
+#else
     uint64_t lo, hi;
     memcpy(&lo, k->b + 0, 8);
     memcpy(&hi, k->b + 8, 8);
@@ -47,22 +51,29 @@ static ADJPACK_INLINE void adjpack_zero_above_nsquare(key128_t *k, unsigned n) {
     }
     memcpy(k->b + 0, &lo, 8);
     memcpy(k->b + 8, &hi, 8);
-    // unsigned n0 = d6pack_get_n(k);
-    // d6pack_set_n(k, n0 ? n0 : n);
+#endif
+}
+
+static ADJPACK_INLINE uint64_t bitreverse64(uint64_t x) {
+    x = ((x & 0x5555555555555555ULL) <<  1) | ((x >>  1) & 0x5555555555555555ULL);
+    x = ((x & 0x3333333333333333ULL) <<  2) | ((x >>  2) & 0x3333333333333333ULL);
+    x = ((x & 0x0F0F0F0F0F0F0F0FULL) <<  4) | ((x >>  4) & 0x0F0F0F0F0F0F0F0FULL);
+    x = ((x & 0x00FF00FF00FF00FFULL) <<  8) | ((x >>  8) & 0x00FF00FF00FF00FFULL);
+    x = ((x & 0x0000FFFF0000FFFFULL) << 16) | ((x >> 16) & 0x0000FFFF0000FFFFULL);
+    x = (x << 32) | (x >> 32);
+    return x;
 }
 
 // Packs adjacency matrix mat[n] into key128_t (compatible with digraph6)
-static ADJPACK_INLINE void adjpack_from_matrix(const uint64_t *mat, unsigned n, key128_t *out) {
+static ADJPACK_INLINE void adjpack_from_matrix(const vec_t *mat, unsigned n, key128_t *out) {
     assert(n >= 1 && n <= 11);
 #if D6PACK_HAVE_UINT128
-    __uint128_t acc = 0;
+	out->u = 0;
     for (unsigned i = 0; i < n; ++i) {
-        for (unsigned j = 0; j < n; ++j) {
-            acc <<= 1;
-            acc |= (mat[i] >> j) & 1;
-        }
+        uint64_t row = bitreverse64(mat[i]) >> (64 - n);
+        out->u <<= n;
+        out->u |= row;
     }
-    out->u = acc;
 #else
     uint64_t lo = 0, hi = 0;
     unsigned pos = 0;
@@ -87,8 +98,9 @@ static ADJPACK_INLINE void adjpack_from_matrix(const uint64_t *mat, unsigned n, 
 // Unpacks key128_t into adjacency matrix mat[n]
 static ADJPACK_INLINE void adjpack_to_matrix(const key128_t *k, uint64_t *mat_out, unsigned n) {
     assert(n >= 1 && n <= 11);
-    memset(mat_out, 0, n * sizeof(uint64_t));
+    //memset(mat_out, 0, n * sizeof(uint64_t));
 #if D6PACK_HAVE_UINT128
+    /*
     __uint128_t acc = k->u;
     for (unsigned i = 0; i < n; ++i) {
         for (unsigned j = 0; j < n; ++j) {
@@ -96,6 +108,12 @@ static ADJPACK_INLINE void adjpack_to_matrix(const key128_t *k, uint64_t *mat_ou
             uint64_t bit = (acc >> bitpos) & 1;
             mat_out[i] |= bit << j;
         }
+    }
+    */
+    __uint128_t acc = k->u;
+    for (int i = n-1; i >= 0; --i) {
+        mat_out[i] = bitreverse64(acc) >> (64 - n);
+        acc >>= n;
     }
 #else
     uint64_t lo, hi;
