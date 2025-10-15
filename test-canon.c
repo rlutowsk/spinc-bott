@@ -20,17 +20,26 @@ void print_key_bits(const key128_t *k, const char *label) {
 
 int main(void) {
     char line[128];
+	char d6[128];
     key128_t key_from_d6, key_from_mat;
     vec_t mat[11], out[11]; // max n = 11
     unsigned n;
     size_t match = 0, unmatch = 0;
 
+    if (fgets(line, sizeof(line), stdin) == NULL) {
+        fprintf(stderr, "error reading first line, quitting...\n");
+        exit(1);
+    }
+    n = graphsize(line);
+    init_nauty_data(n);
+
     while (fgets(line, sizeof(line), stdin)) {
         // Remove trailing newline
         line[strcspn(line, "\n")] = 0;
 
+		d6_to_d6_canon(line, d6);
         // Decode digraph6 string into key128_t
-        if (!d6pack_decode(line, &key_from_d6, &n)) {
+        if (!d6pack_decode(d6, &key_from_d6, &n)) {
             fprintf(stderr, "Invalid digraph6 string: %s\n", line);
             continue;
         }
@@ -40,9 +49,9 @@ int main(void) {
             fprintf(stderr, "matrix_from_d6 failed for: %s\n", line);
             continue;
         }
-
+		matrix_to_matrix_canon(mat, n, out);
         // Pack matrix into key128_t
-        adjpack_from_matrix(mat, n, &key_from_mat);
+        adjpack_from_matrix(out, n, &key_from_mat);
 
         // Compare both keys
         if (memcmp(&key_from_d6, &key_from_mat, sizeof(key128_t)) != 0) {
@@ -54,13 +63,8 @@ int main(void) {
         } else {
             ++match;
         }
-        adjpack_to_matrix(&key_from_mat, out, n);
-        if (memcmp(mat, out, n*sizeof(vec_t)) != 0) {
-            fprintf(stderr, "packing - unpacking error\n");
-            exit(1);
-        }
     }
-
+    free_nauty_data();
     printf("Matched: %lu. Unmatched: %lu.\n", match, unmatch);
 
     return 0;

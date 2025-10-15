@@ -18,15 +18,6 @@
 
 typedef enum { BUCKET_GLIB = 0, BUCKET_FLAT128 = 1 } BucketKind;
 
-/* ---- Internal flat open-addressing set for 16/32-byte keys ---- */
-typedef struct {
-    key128_t *keys;   /* inline keys */
-    uint8_t  *ctrl;   /* 0=empty, 1=full, 2=deleted */
-    size_t    cap;    /* power of two */
-    size_t    size;   /* # FULL slots */
-    size_t    dels;   /* # tombstones */
-} FlatSet;
-
 #define CTRL_EMPTY   ((uint8_t)0)
 #define CTRL_FULL    ((uint8_t)1)
 #define CTRL_DELETED ((uint8_t)2)
@@ -49,7 +40,7 @@ static size_t next_pow2(size_t x) {
 #endif
 }
 
-static void flat_init(FlatSet *s, size_t cap_hint) {
+void flat_init(FlatSet *s, size_t cap_hint) {
     s->cap  = next_pow2(cap_hint ? cap_hint : 1024);
     s->size = 0;
     s->dels = 0;
@@ -57,7 +48,7 @@ static void flat_init(FlatSet *s, size_t cap_hint) {
     s->ctrl = (uint8_t*)g_malloc0_n(s->cap, sizeof(uint8_t));
 }
 
-static void flat_free(FlatSet *s) {
+void flat_free(FlatSet *s) {
     if (!s){
         return;
     }
@@ -95,7 +86,7 @@ static void flat_rehash(FlatSet *s, size_t new_cap) {
     *s = dst;
 }
 
-static gboolean flat_lookup(const FlatSet *s, const key128_t *k) {
+gboolean flat_lookup(const FlatSet *s, const key128_t *k) {
     if (s->cap == 0) return FALSE;
     uint64_t h = hash16(k);
     size_t m = s->cap - 1, i = (size_t)(h & m);
@@ -142,7 +133,7 @@ static void flat_maybe_shrink(FlatSet *s)
     }
 }
 
-static gboolean flat_remove(FlatSet *s, const key128_t *k) {
+gboolean flat_remove(FlatSet *s, const key128_t *k) {
     if (s->cap == 0) return FALSE;
 
     uint64_t h = hash16(k);
@@ -172,7 +163,7 @@ static gboolean flat_remove(FlatSet *s, const key128_t *k) {
     }
 }
 
-static gboolean flat_insert(FlatSet *s, const key128_t *k) {
+gboolean flat_insert(FlatSet *s, const key128_t *k) {
     if (s->cap == 0) flat_init(s, 1024);
 
     if (occupied_load(s) > MAX_OCCUPIED) {
@@ -234,7 +225,7 @@ static void flat_reserve(FlatSet *s, size_t n_expected, double max_true) {
 struct _GHashBucket {
     BucketKind kind;
     gsize      nshards;
-    gsize      number_of_elements;
+    ATOMIC_ATTR gsize      number_of_elements;
 
     /* Locks: one per shard (used in both modes). */
     GMutex    *locks;
@@ -339,7 +330,9 @@ void g_bucket_destroy(GHashBucket *b)
     g_free(b);
 }
 
-gsize g_bucket_size(GHashBucket *b) { return b ? b->number_of_elements : 0; }
+gsize g_bucket_size(GHashBucket *b) {
+    return b ? ATOMIC_GET(b->number_of_elements) : 0;
+}
 
 gpointer g_bucket_lookup(GHashBucket* b, const key128_t* k)
 {
@@ -379,8 +372,11 @@ gboolean g_bucket_remove(GHashBucket* b, const key128_t* k)
         // const key128_t *k = (const key128_t*)key;
         size_t idx = shard_index_flat(b, k);
         G_MUTEX_LOCK(&b->locks[idx]);
-        if (flat_remove(&b->flat[idx], k)) { b->number_of_elements--; res = TRUE; }
+        res = flat_remove(&b->flat[idx], k);
         G_MUTEX_UNLOCK(&b->locks[idx]);
+        if (res) {
+            ATOMIC_DEC(b->number_of_elements);
+        }
     }
     return res;
 }
@@ -407,7 +403,9 @@ gboolean g_bucket_insert(GHashBucket *b, const key128_t* kptr, gpointer value)
         G_MUTEX_UNLOCK(&b->locks[idx]);
         /* We copied bytes; respect caller ownership per contract. */
         // if (b->key_destroy_func) b->key_destroy_func(key);
-        if (ins) b->number_of_elements++;
+        if (ins) {
+            ATOMIC_INC(b->number_of_elements);
+        }
         return ins;
     }
 }
@@ -432,8 +430,8 @@ gboolean g_bucket_insert_copy128(GHashBucket *b, const key128_t *key)
         G_MUTEX_LOCK(&b->locks[idx]);
         if (b->flat[idx].cap == 0) flat_init(&b->flat[idx], 1024);
         gboolean ins = flat_insert(&b->flat[idx], key);
-        if (ins) b->number_of_elements++;
         G_MUTEX_UNLOCK(&b->locks[idx]);
+        if (ins) ATOMIC_INC(b->number_of_elements);
         return ins;
     }
 }
