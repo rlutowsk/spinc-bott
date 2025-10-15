@@ -3,15 +3,14 @@ CC  = gcc
 GAC = gac
 
 # -- initial flags ---
-CFLAGS  ?=
-CFLAGS  += -I. @WARNINGS@ @APP_CFLAGS@
-LDFLAGS ?=
+CFLAGS  ?= -I. @WARNINGS@ @APP_CFLAGS@
 
 # -- Sources and targets ---
-OPENMP_SRC := mats.c backtrack.c 
+OPENMP_SRC := mats.c backtrack.c minimalf.c
 OPENMP_APP := $(patsubst %.c, %, $(OPENMP_SRC))
 
-NAUTY_SRC := mats.c backtrack.c orientedg.c upperg.c upperf.c canonicalg.c uniqueg.c spinf.c spincf.c orbitg.c test-pack.c
+NAUTY_SRC := mats.c backtrack.c orientedg.c upperg.c upperf.c canonicalg.c uniqueg.c spinf.c spincf.c orbitg.c minimalf.c
+NAUTY_SRC += test-pack.c test-canon.c
 NAUTY_APP := $(patsubst %.c, %, $(NAUTY_SRC))
 
 APP  := $(sort ${OPENMP_APP} ${NAUTY_APP})
@@ -59,6 +58,8 @@ $(NAUTY_APP): OBJ     := bott.o common.o dag.o bucket.o
 bucket.o: CFLAGS += @GLIB_CFLAGS@ @XXHASH_CFLAGS@
 bucket.o: d6pack11.h
 
+minimalf.o: adjpack11.h parse_scaled.h
+
 # --- building applications ---
 # Each app: links its own %.o and shared $(OBJ)
 $(APP): %: %.o $(OBJ)
@@ -95,6 +96,7 @@ profile: CFLAGS := -I. -pg @CFLAGS@ @CPPFLAGS@ @WARNINGS@ -fno-inline
 profile: app
 
 sanitize: CFLAGS := -I. -g -O2 -fsanitize=address -fno-omit-frame-pointer @OPENMP_CFLAGS@ @CPPFLAGS@ @WARNINGS@ 
+sanitize: LDFLAGS += -fsanitize=address,undefined
 sanitize: app
 
 
