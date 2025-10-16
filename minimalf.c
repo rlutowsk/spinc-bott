@@ -48,6 +48,7 @@ static void buffer_add(OutputBuffer *buffer, char* line) {
         {
             for (size_t i = 0; i < buffer->count; ++i) {
                 fputs(buffer->lines[i], buffer->out);
+                fputc('\n', buffer->out);
                 //free(buffer->lines[i]);
             }
         }
@@ -61,6 +62,7 @@ static void buffer_flush(OutputBuffer *buffer) {
         {
             for (size_t i = 0; i < buffer->count; ++i) {
                 fputs(buffer->lines[i], buffer->out);
+                fputc('\n', buffer->out);
                 //free(buffer->lines[i]);
             }
         }
