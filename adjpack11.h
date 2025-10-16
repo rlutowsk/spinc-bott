@@ -55,6 +55,12 @@ static ADJPACK_INLINE void adjpack_zero_above_nsquare(key128_t *k, unsigned n) {
 }
 
 static ADJPACK_INLINE uint64_t bitreverse64(uint64_t x) {
+    // Check if the compiler supports a built-in function for bit reversal.
+    // Clang supports this from version 5.
+#if defined(__clang__) && __clang_major__ >= 5
+    return __builtin_bitreverse64(x);
+#else
+    // Portable, and very efficient implementation as a fallback.
     x = ((x & 0x5555555555555555ULL) <<  1) | ((x >>  1) & 0x5555555555555555ULL);
     x = ((x & 0x3333333333333333ULL) <<  2) | ((x >>  2) & 0x3333333333333333ULL);
     x = ((x & 0x0F0F0F0F0F0F0F0FULL) <<  4) | ((x >>  4) & 0x0F0F0F0F0F0F0F0FULL);
@@ -62,6 +68,7 @@ static ADJPACK_INLINE uint64_t bitreverse64(uint64_t x) {
     x = ((x & 0x0000FFFF0000FFFFULL) << 16) | ((x >> 16) & 0x0000FFFF0000FFFFULL);
     x = (x << 32) | (x >> 32);
     return x;
+#endif
 }
 
 // Packs adjacency matrix mat[n] into key128_t (compatible with digraph6)

@@ -86,4 +86,9 @@ char* d6_to_d6_canon(char *src, char *dst);
 
 char *d6_to_d6_upper(char *src, char *dst);
 
+int matrix_from_graph(graph *g, vec_t *mat);
+int matrix_to_graph(graph *g, const vec_t *mat);
+
+graph *get_dag_g(void);
+
 #endif // DAG_H
