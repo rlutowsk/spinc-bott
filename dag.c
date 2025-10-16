@@ -1,5 +1,13 @@
 #include "dag.h"
+#include "adjpack11.h"
 #include <stdbool.h>
+
+#include <assert.h>
+_Static_assert(sizeof(vec_t) == sizeof(setword), "vec_t and setword types must match for memcpy optimization");
+// check at compile time if everything is as expected
+_Static_assert(sizeof(vec_t) == 8, "vec_t must be a 64-bit type.");
+_Static_assert(sizeof(set)   == 8, "nauty's set type must be 64-bit.");
+
 /*
  * DYNALLSTAT in nauty.h is used to declare static variables
  */
@@ -14,9 +22,10 @@ DYNALLSTAT(int  , dag_queue , dag_queue_sz );
 DYNALLSTAT(int  , dag_order , dag_order_sz );
 DYNALLSTAT(int  , dag_pos   , dag_pos_sz   );
 
-static TLS_ATTR int dag_n;
-static TLS_ATTR int dag_m;
-static TLS_ATTR int dag_int_arr_sz;
+static TLS_ATTR int   dag_n;
+static TLS_ATTR int   dag_m;
+static TLS_ATTR int   dag_int_arr_sz;
+static TLS_ATTR vec_t dag_mask;
 
 void init_nauty_data(int n)
 {
@@ -35,6 +44,12 @@ void init_nauty_data(int n)
     DYNALLOC2(graph, dag_upperg, dag_upperg_sz, dag_n, dag_m, "init_nauty");
 
     dag_int_arr_sz = dag_n * sizeof(int);
+
+    dag_mask = (dag_n == 64) ? (vec_t)-1 : (((vec_t)1 << dag_n) - 1);
+
+    // Assertion checked at runtime (in debug mode)
+    // Documents a key limitation of the algorithm.
+    assert(dag_m == 1 && "This function is optimized for n <= 64 and will not work correctly otherwise.");
 }
 
 void free_nauty_data(void)
@@ -51,6 +66,15 @@ void free_nauty_data(void)
     DYNFREE(dag_pos   , dag_pos_sz   );
 
     dag_int_arr_sz = 0;
+
+    dag_mask = 0;
+    dag_n = 0;
+    dag_m = 0;
+}
+
+graph *get_dag_g(void)
+{
+    return dag_g;
 }
 
 char* matrix_to_d6(const vec_t *mat, int dim, char *dag_gcode)
@@ -177,7 +201,6 @@ char* graph_to_d6(graph *g, int m, int n, char *dag_gcode)
     return dag_gcode;
 }
 
-
 /**
  * @brief Generates the canonical labeling of a directed graph.
  *
@@ -204,18 +227,9 @@ static inline void generate_canon_digraph(int m, int n)
 
 char* matrix_to_d6_canon(const vec_t *mat, int n, char *dag_gcode)
 {
-    //int m = SETWORDSNEEDED(n);
-
-    EMPTYGRAPH(dag_g, dag_m, dag_n);
-    // vec_t mask = ((vec_t)1 << dag_n) - 1;
-    for (int i=0; i<dag_n; i++) {
-        vec_t row = mat[i]; // & mask;
-		while (row) {
-			int j = __builtin_ctzl(row);
-			ADDONEARC(dag_g, i, j, dag_m);
-			row ^= ((vec_t)1 << j);
-		}
-    }
+    /* generate graph from mat */
+    matrix_to_graph(dag_g, mat);
+    /* canonize the graph */
     generate_canon_digraph(dag_m, dag_n);
     return graph_to_d6(dag_canong, dag_m, dag_n, dag_gcode);
 }
@@ -225,28 +239,12 @@ vec_t* matrix_to_matrix_canon(const vec_t *mat, int n, vec_t *out)
     if (out == NULL) {
         return NULL;
     }
-
-    EMPTYGRAPH(dag_g, dag_m, dag_n);
-    // vec_t mask = ((vec_t)1 << dag_n) - 1;
     /* generate graph from mat */
-    for (int i=0; i<dag_n; i++) {
-		vec_t row = mat[i]; // & mask;
-		while (row) {
-			int j = __builtin_ctzl(row);
-			ADDONEARC(dag_g, i, j, dag_m);
-			row ^= ((vec_t)1 << j);
-		}
-    }
+    matrix_to_graph(dag_g, mat);
     /* canonize the graph */
     generate_canon_digraph(dag_m, dag_n);
     /* generate out from canonical form of the graph */
-    for (int i=0; i<dag_n; ++i) {
-        out[i]  = 0;
-        set *gi = GRAPHROW(dag_canong,i,dag_m);
-        for (int j=0; j<dag_n; ++j) {
-            out[i] |= ISELEMENT(gi, j) << j;
-        }
-    }
+    matrix_from_graph(dag_canong, out);
     return out;
 }
 
@@ -320,4 +318,30 @@ char *d6_to_d6_upper(char *src, char *dst)
     }
     graph_to_d6(dag_upperg, dag_m, dag_n, dst);
     return dst;
+}
+
+int matrix_from_graph(graph *g, vec_t *mat)
+{
+    if (g == NULL || mat == NULL) {
+        return -1;
+    }
+
+    for (int i = 0; i < dag_n; ++i) {
+        set *gi = GRAPHROW(g,i,dag_m);
+        mat[i] = bitreverse64((uint64_t)*gi) & dag_mask;
+    }
+    return 0;
+}
+
+int matrix_to_graph(graph *g, const vec_t *mat)
+{
+    if (g == NULL || mat == NULL) {
+        return -1;
+    }
+
+    for (int i = 0; i < dag_n; ++i) {
+        set *gi = GRAPHROW(g,i,dag_m);
+        *gi = bitreverse64((uint64_t)(mat[i] & dag_mask));
+    }
+    return 0;
 }
