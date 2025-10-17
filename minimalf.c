@@ -210,7 +210,7 @@ int main(int argc, char *argv[]) {
     // default settings
     size_t lines_capacity = 100000; 
     int num_shards = 256;
-    int num_threads = 4; // default 4 threads
+    int num_threads = omp_get_max_threads(); // default to max threads
     int v = 0;
     bool unique = false;
 
