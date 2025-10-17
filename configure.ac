@@ -7,7 +7,7 @@ AC_INIT([Spinc structures on real Bott manifolds],[0.8],[rafal.lutowski@ug.edu.p
 # Checks for programs.
 # AC_PROG_CXX
 APP_CFLAGS='-O3 -march=native'
-if test -z $CFLAGS; then
+if test -z "$CFLAGS"; then
     CFLAGS=$APP_CFLAGS
 else
     APP_CFLAGS=$CFLAGS
