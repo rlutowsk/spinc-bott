@@ -92,7 +92,8 @@ $(APP): %: %.o $(OBJ)
 debug: CFLAGS := -I. -g -O0 @OPENMP_CFLAGS@ @CPPFLAGS@ @WARNINGS@ -DDEBUG
 debug: app
 
-profile: CFLAGS := -I. -pg @CFLAGS@ @CPPFLAGS@ @WARNINGS@ -fno-inline
+profile: CFLAGS := -I. -pg @CFLAGS@ @CPPFLAGS@ @WARNINGS@ -fno-inline -DPROFILE
+profile: LDFLAGS += -pg
 profile: app
 
 sanitize: CFLAGS := -I. -g -O2 -fsanitize=address -fno-omit-frame-pointer @OPENMP_CFLAGS@ @CPPFLAGS@ @WARNINGS@ 

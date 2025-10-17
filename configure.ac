@@ -69,7 +69,7 @@ PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.32],
                   [AC_SUBST(GLIB_LIBS)],
                   [AC_MSG_ERROR([GLib 2.32 or newer is required.])])
 
-PKG_CHECK_MODULES([XXHASH], [libxxhash >= 0.8.2],
+PKG_CHECK_MODULES([XXHASH], [libxxhash >= 0.8.1],
                   [AC_SUBST(XXHASH_CFLAGS)]
                   [AC_SUBST(XXHASH_LIBS)],
                   [AC_MSG_ERROR([xxhash library required])])

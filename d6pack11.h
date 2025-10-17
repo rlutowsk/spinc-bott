@@ -27,6 +27,11 @@
 #  define D6PACK_UNLIKELY(x) (x)
 #endif
 
+#if defined(PROFILE) && defined(D6PACK_INLINE)
+#  undef D6PACK_INLINE
+#  define D6PACK_INLINE __attribute__((noinline))
+#endif
+
 #ifndef D6PACK_HAVE_UINT128
 #  if defined(__SIZEOF_INT128__)
 #    define D6PACK_HAVE_UINT128 1

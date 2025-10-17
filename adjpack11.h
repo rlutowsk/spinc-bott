@@ -17,6 +17,11 @@
 # define ADJPACK_UNLIKELY(x) (x)
 #endif
 
+#if defined(PROFILE) && defined(ADJPACK_INLINE)
+#  undef ADJPACK_INLINE
+#  define ADJPACK_INLINE __attribute__((noinline))
+#endif
+
 #define ADJPACK_N_BYTE   15u
 #define ADJPACK_N_SHIFT   4u
 #define ADJPACK_N_MASK 0x0Fu
