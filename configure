@@ -4769,19 +4769,19 @@ fi
 
 
 pkg_failed=no
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libxxhash >= 0.8.2" >&5
-printf %s "checking for libxxhash >= 0.8.2... " >&6; }
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libxxhash >= 0.8.1" >&5
+printf %s "checking for libxxhash >= 0.8.1... " >&6; }
 
 if test -n "$XXHASH_CFLAGS"; then
     pkg_cv_XXHASH_CFLAGS="$XXHASH_CFLAGS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libxxhash >= 0.8.2\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libxxhash >= 0.8.2") 2>&5
+    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libxxhash >= 0.8.1\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libxxhash >= 0.8.1") 2>&5
   ac_status=$?
   printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_XXHASH_CFLAGS=`$PKG_CONFIG --cflags "libxxhash >= 0.8.2" 2>/dev/null`
+  pkg_cv_XXHASH_CFLAGS=`$PKG_CONFIG --cflags "libxxhash >= 0.8.1" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -4793,12 +4793,12 @@ if test -n "$XXHASH_LIBS"; then
     pkg_cv_XXHASH_LIBS="$XXHASH_LIBS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libxxhash >= 0.8.2\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libxxhash >= 0.8.2") 2>&5
+    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libxxhash >= 0.8.1\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libxxhash >= 0.8.1") 2>&5
   ac_status=$?
   printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_XXHASH_LIBS=`$PKG_CONFIG --libs "libxxhash >= 0.8.2" 2>/dev/null`
+  pkg_cv_XXHASH_LIBS=`$PKG_CONFIG --libs "libxxhash >= 0.8.1" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -4819,9 +4819,9 @@ else
         _pkg_short_errors_supported=no
 fi
         if test $_pkg_short_errors_supported = yes; then
-                XXHASH_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libxxhash >= 0.8.2" 2>&1`
+                XXHASH_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libxxhash >= 0.8.1" 2>&1`
         else
-                XXHASH_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libxxhash >= 0.8.2" 2>&1`
+                XXHASH_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libxxhash >= 0.8.1" 2>&1`
         fi
         # Put the nasty error message in config.log where it belongs
         echo "$XXHASH_PKG_ERRORS" >&5

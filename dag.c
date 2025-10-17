@@ -145,18 +145,77 @@ int matrix_from_d6(char *s, vec_t *mat, ind_t dim)
                 k = 6;
                 x = *(p++) - BIAS6;
             }
-            /*
-            if ((x & TOPBIT6))
-            {
-                mat[i] |= (1ULL << j);
-            }
-            */
+            
+            // if ((x & TOPBIT6))
+            // {
+            //     mat[i] |= (1ULL << j);
+            // }
+            
             mat[i] |= (vec_t)((x & TOPBIT6)!=0) << j;
             x <<= 1;
         }
     }
     return 0;
 }
+
+/*
+#include <string.h>
+#include <stdint.h>
+
+// Założenia jak u Ciebie:
+// - graphsize(), SIZELEN(n)
+// - BIAS6 (63), TOPBIT6 (0x20)
+// - typy: vec_t (np. uint64_t) i ind_t
+
+int matrix_from_d6(char *s, vec_t * __restrict mat, ind_t dim)
+{
+    if (!s || s[0] != '&') return -1;
+
+    const int n = graphsize(s);
+    if (n <= 0 || (ind_t)n > dim) return -1;
+
+    // Zerowanie tylko potrzebnej części (lub całego dim – jak wolisz)
+    memset(mat, 0, (size_t)dim * sizeof(vec_t));
+
+    const unsigned char *p = (const unsigned char*)s + 1 + SIZELEN(n);
+
+    // Globalny, ciągły strumień bitów: k = ile bitów pozostało w x (0..6)
+    unsigned k = 0;
+    unsigned x = 0;
+
+    for (int i = 0; i < n; ++i) {
+        vec_t row  = 0;
+        vec_t mask = 1;
+
+        for (int j = 0; j < n; ++j) {
+            if (k == 0) {                 // doładuj kolejne 6 bitów
+                x = (unsigned)(*p++) - (unsigned)BIAS6;
+                k = 6;
+            }
+            if (x & TOPBIT6) row |= mask; // testuj MSB (bit5), jak w Twoim kodzie
+            x <<= 1;                       // przejdź do kolejnego bitu: bit4 -> bit5 ...
+            --k;                           // jeden bit mniej do wykorzystania
+            mask <<= 1;                    // następna kolumna w wierszu
+        }
+        mat[i] = row;                      // jeden zapis na wiersz
+    }
+
+    return 0;
+}
+
+#include "bucket.h"
+#include "adjpack11.h"
+
+int matrix_from_d6(char *s, vec_t * __restrict mat, ind_t dim)
+{
+    key128_t k;
+    unsigned n;
+    d6pack_decode(s, &k, &n);
+    if (n == 0 || (ind_t)n > dim) return -1;
+    adjpack_to_matrix(&k, mat, n);
+    return 0;
+}
+*/
 
 char* graph_to_d6(graph *g, int m, int n, char *dag_gcode)
 /* convert nauty graph to digraph6 string, including \0 */
