@@ -11,7 +11,7 @@ config.h
 config.log
 config.status
 configure~
-data.d6
+test.d6
 Makefile
 gap.g
 .vscode/
