@@ -1,20 +1,22 @@
 # --- compilers ---
-CC ?= gcc
+CC  = @CC@
 GAC = gac
 
 # -- initial flags ---
 CFLAGS  ?= -I. @WARNINGS@ @APP_CFLAGS@
 
 # -- Sources and targets ---
-OPENMP_SRC := mats.c backtrack.c minimalf.c
+OPENMP_SRC := mats.c backtrack.c minimalf.c uniqueg.c
 OPENMP_APP := $(patsubst %.c, %, $(OPENMP_SRC))
+OPENMP_OBJ := tlsbuf.o
 
 NAUTY_SRC := mats.c backtrack.c orientedf.c upperg.c upperf.c canonicalg.c uniqueg.c spinf.c spincf.c orbitg.c minimalf.c
-NAUTY_SRC += test-pack.c test-canon.c test-mat-graph.c
+NAUTY_SRC += $(wildcard test-*.c)
 NAUTY_APP := $(patsubst %.c, %, $(NAUTY_SRC))
+NAUTY_OBJ := dag.o bucket.o
 
 APP  := $(sort ${OPENMP_APP} ${NAUTY_APP})
-OBJ  := bott.o common.o dag.o bucket.o
+OBJ  := bott.o common.o
 LIB  := gap.so
 LOBJ := $(patsubst %.o, %.lo, $(OBJ))
 
@@ -24,7 +26,7 @@ TARGETS := $(APP) $(LIB)
 APP_OBJ := $(APP:%=%.o)
 
 # --- automatic dependency files (for all .o files, including app ones) ---
-DEPS := $(patsubst %.o,%.d,$(OBJ) $(APP_OBJ))
+DEPS := $(patsubst %.o,%.d,$(OBJ) $(APP_OBJ) $(OPENMP_OBJ) $(NAUTY_OBJ))
 
 # -- main targets ---
 .PHONY: all app debug profile sanitize clean
@@ -36,7 +38,7 @@ app: $(APP)
 # - The object files required for building $(OPENMP_APP) are listed in OBJ (bott.o and common.o).
 $(OPENMP_APP): CFLAGS  += @OPENMP_CFLAGS@
 $(OPENMP_APP): LDFLAGS += @OPENMP_CFLAGS@
-$(OPENMP_APP): OBJ     := bott.o common.o
+$(OPENMP_APP): OBJ     += $(OPENMP_OBJ)
 
 # The following rules configure the build for the $(NAUTY_APP) target:
 # - CFLAGS are extended with compiler flags for Nauty, GLib, and XXHash libraries.
@@ -44,7 +46,7 @@ $(OPENMP_APP): OBJ     := bott.o common.o
 # - OBJ specifies the object files required to build $(NAUTY_APP).
 $(NAUTY_APP): CFLAGS  += @NAUTY_CFLAGS@ @GLIB_CFLAGS@ @XXHASH_CFLAGS@
 $(NAUTY_APP): LDFLAGS += @RPATH@ @NAUTY_LIBS@ @GLIB_LIBS@ @XXHASH_LIBS@
-$(NAUTY_APP): OBJ     := bott.o common.o dag.o bucket.o
+$(NAUTY_APP): OBJ     += $(NAUTY_OBJ)
 
 # The following rule appends additional compiler flags (@APP_CFLAGS@) to all application targets in $(APP).
 # This allows for custom flags to be specified for all application builds, independent of other target-specific flags.
@@ -60,9 +62,13 @@ bucket.o: d6pack11.h
 
 minimalf.o: adjpack11.h parse_scaled.h
 
+tlsbuf.o: CFLAGS += @OPENMP_CFLAGS@
+
+.SECONDEXPANSION:
+
 # --- building applications ---
 # Each app: links its own %.o and shared $(OBJ)
-$(APP): %: %.o $(OBJ)
+$(APP): %: %.o $$(OBJ)
 	$(CC) -o $@ $@.o $(OBJ) $(LDFLAGS)
 
 
@@ -106,4 +112,18 @@ sanitize: app
 
 # -- remove all built targets and object files ---
 clean:
-	@rm -f $(wildcard $(TARGETS) $(OBJ) $(APP_OBJ) $(LOBJ) $(DEPS))
+	@rm -f $(wildcard $(TARGETS) *.o *.lo *.d)
+
+distclean: clean
+	@rm -f $(wildcard test.d6)
+
+# -- make test.d6 file - the default for testing apps --
+test-data:
+	@geng 4 | directg -a >  test.d6
+	@geng 5 | directg -a >> test.d6
+	@geng 6 | directg -a >> test.d6
+	@geng 7 | directg -a >> test.d6
+	@geng 8 20:24 | directg -a >> test.d6
+	@geng 9  9:11 | directg -a >> test.d6
+	@geng 10 9:11 | directg -a >> test.d6
+	@geng 11 9:11 | directg -a >> test.d6

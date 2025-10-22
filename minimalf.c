@@ -8,6 +8,7 @@
 #include "adjpack11.h"
 #include "parse_scaled.h"
 #include "common.h"
+#include "tlsbuf.h"
 
 static void help(const char *progname) {
     fprintf(stderr,
@@ -15,59 +16,10 @@ static void help(const char *progname) {
         "  -j NUM   Number of threads (default: 24)\n"
         "  -n NUM   Number of hash shards (default: 256)\n"
         "  -l NUM   Input lines per batch (default: 100000)\n"
+        "  -u       Output unique representatives only\n"
         "  -v       Increase verbosity (can be repeated)\n"
         "  -h       Show this help message\n",
         progname);
-}
-
-/**
- * Thread-local output buffer to reduce contention on stdout.
- */
-typedef struct {
-    char **lines;
-    size_t count;
-    size_t capacity;
-    FILE *out;
-} OutputBuffer;
-
-static void buffer_init(OutputBuffer *buffer, size_t initial_capacity, FILE *out) {
-    buffer->lines = malloc(initial_capacity * sizeof(char*));
-    buffer->count = 0;
-    buffer->capacity = initial_capacity;
-    buffer->out = out;
-}
-static void buffer_destroy(OutputBuffer *buffer) {
-    // if flush() has been called, count == 0 and this is a no-op
-    // for (size_t i = 0; i < buffer->count; ++i) free(buffer->lines[i]);
-    free(buffer->lines);
-    buffer->lines = NULL; buffer->count = 0; buffer->capacity = 0;
-}
-static void buffer_add(OutputBuffer *buffer, char* line) {
-    if (buffer->count >= buffer->capacity) {
-        #pragma omp critical (StdoutLock)
-        {
-            for (size_t i = 0; i < buffer->count; ++i) {
-                fputs(buffer->lines[i], buffer->out);
-                fputc('\n', buffer->out);
-                //free(buffer->lines[i]);
-            }
-        }
-        buffer->count = 0;
-    }
-    buffer->lines[buffer->count++] = line; //strdup(line);
-}
-static void buffer_flush(OutputBuffer *buffer) {
-    if (buffer->count > 0) {
-        #pragma omp critical (StdoutLock)
-        {
-            for (size_t i = 0; i < buffer->count; ++i) {
-                fputs(buffer->lines[i], buffer->out);
-                fputc('\n', buffer->out);
-                //free(buffer->lines[i]);
-            }
-        }
-    }
-    buffer->count = 0;
 }
 
 #define MAXLINE 128
@@ -210,7 +162,7 @@ int main(int argc, char *argv[]) {
     // default settings
     size_t lines_capacity = 100000; 
     int num_shards = 256;
-    int num_threads = 4; // default 4 threads
+    int num_threads = omp_get_max_threads(); // default max threads
     int v = 0;
     bool unique = false;
 
@@ -288,7 +240,7 @@ int main(int argc, char *argv[]) {
     dim = graphsize(buffer);
     assert(dim > 0 && dim <= 11);
 
-    // Global dedup across orbits by CANONICAL key (like orbitg.c)
+    // Global dedup across orbits by CANONICAL key
     GHashBucket *g_canonical_set = NULL;
     if (unique) {
         g_canonical_set = g_bucket_new_128(g_free, NULL, num_shards);

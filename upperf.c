@@ -8,7 +8,7 @@ int main(void) {
 
     // Main loop to read one line (one graph) at a time
     while (fgets(s, sizeof(s), stdin) != NULL) {
-
+        s[strcspn(s, "\r\n")] = 0;
         // 1. Determine the number of vertices (n) from the graph6 string.
         n = graphsize(s);
         if (n == 0) {
@@ -17,7 +17,10 @@ int main(void) {
         matrix_from_d6(s, mat, n);
 
         if (is_upper_triangular(mat, n)) {
-            printf("%s", s);
+            printf("%s\n", s);
+        } else {
+            print_mat(mat, n);
+            exit(1);
         }
     }
     return 0;

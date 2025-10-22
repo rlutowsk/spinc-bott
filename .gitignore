@@ -4,11 +4,14 @@
 *.lo
 *.o
 *.so
+*.sh
+!testall.sh
 autom4te.cache
 config.h
 config.log
 config.status
 configure~
+data.d6
 Makefile
 gap.g
 .vscode/

@@ -26,17 +26,6 @@ static void help(const char *name)
         name);
 }
 
-/* --- get maximal possible state of the oriented RBM matrix --- */
-static inline state_t get_max_state(ind_t dim)
-{
-    ind_t c;
-    state_t max_state;
-    for (c = 0, max_state = 1; c < dim - 1; ++c) {
-        max_state <<= (dim - c - 2);
-    }
-    return max_state - 1;
-}
-
 /* global */
 int calculate_spin = 0;
 
@@ -161,7 +150,7 @@ int main(int argc, char *argv[])
     }
 
     /* cache */
-    for (int i = sdim; i < 12; ++i) {
+    for (int i = sdim; i <= dim; ++i) {
         vec_t *tmp;
         populate_cache(&tmp, &cache_size, i);
         cache[i] = tmp;
@@ -194,7 +183,7 @@ int main(int argc, char *argv[])
     const unsigned long total_iters = (unsigned long)(loop_stop - loop_start + 1);
 
     /* task granularity selection: ~8 tasks per thread, with safe limits */
-    int nthreads = omp_get_max_threads();
+    int nthreads = omp_get_num_threads();
     unsigned long target_tasks = (unsigned long)(nthreads > 0 ? nthreads : 1) * 8ul;
     unsigned long grain = (total_iters + target_tasks - 1) / (target_tasks ? target_tasks : 1);
     if (grain < 256ul)   grain = 256ul;
@@ -344,7 +333,6 @@ size_t backtrack(vec_t *mat, vec_t **cache, ind_t cdim, ind_t ddim,
          */
         mat[0] = 0;
         *spinc += 1;
-
         /* d6 code output only in the last recursion step */
         char code_buf[256];
         if (out && out->enabled) {

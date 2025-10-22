@@ -1,15 +1,14 @@
 #include "common.h"
 
-struct timespec tv;
+uint64_t tic_time_ns = 0;
+
 void tic(void)
 {
-    clock_gettime(CLOCK_REALTIME, &tv);
+    tic_time_ns = ns_now_monotonic();
 }
 time_t toc(void)
 {
-    static struct timespec st;
-    clock_gettime(CLOCK_REALTIME, &st);
-    return (tv.tv_sec==st.tv_sec) ? st.tv_nsec - tv.tv_nsec : 1000000000*(st.tv_sec-tv.tv_sec)+st.tv_nsec - tv.tv_nsec;
+    return ns_now_monotonic() - tic_time_ns;
 }
 
 unsigned int verbosity_level = 0;
@@ -25,4 +24,9 @@ void printlog(unsigned int v, const char *format, ...)
     vfprintf(stderr, format, argptr);
     fprintf(stderr, "\n");
     va_end(argptr);
+}
+
+void increase_verbosity(void)
+{
+    ++verbosity_level;
 }

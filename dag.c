@@ -1,5 +1,6 @@
 #include "dag.h"
 #include "adjpack11.h"
+#include "d6pack11.h"
 #include <stdbool.h>
 
 #include <assert.h>
@@ -113,48 +114,13 @@ char* matrix_to_d6(const vec_t *mat, int dim, char *dag_gcode)
     return dag_gcode;
 }
 
-int matrix_from_d6(char *s, vec_t *mat, ind_t dim)
+int matrix_from_d6(char *s, vec_t * __restrict mat, ind_t dim)
 {
-    char *p;
-    int n,i,j,k,x;
-
-    if (s[0] != '&') {
-        return -1;
-    }
-
-    n = graphsize(s);
-    
-    if (n <= 0 || n > dim) {
-        return -1;
-    }
-
-    memset(mat, 0, dim * sizeof(vec_t)); // Initialize the matrix with zeros
-
-    x = 0;
-    p = s + 1 + SIZELEN(n);
-    // p = s + SIZELEN(n);
-
-    k = 1;
-    for (i = 0; i < n; ++i)
-    {
-        // mat[i] = 0;
-        for (j = 0; j < n; ++j)
-        {
-            if (--k == 0)
-            {
-                k = 6;
-                x = *(p++) - BIAS6;
-            }
-            
-            // if ((x & TOPBIT6))
-            // {
-            //     mat[i] |= (1ULL << j);
-            // }
-            
-            mat[i] |= (vec_t)((x & TOPBIT6)!=0) << j;
-            x <<= 1;
-        }
-    }
+    key128_t k;
+    unsigned n = 0;
+    d6pack_decode(s, &k, &n);
+    if (n == 0 || (ind_t)n > dim) return -1;
+    adjpack_to_matrix(&k, mat, n);
     return 0;
 }
 
@@ -200,19 +166,6 @@ int matrix_from_d6(char *s, vec_t * __restrict mat, ind_t dim)
         mat[i] = row;                      // jeden zapis na wiersz
     }
 
-    return 0;
-}
-
-#include "bucket.h"
-#include "adjpack11.h"
-
-int matrix_from_d6(char *s, vec_t * __restrict mat, ind_t dim)
-{
-    key128_t k;
-    unsigned n;
-    d6pack_decode(s, &k, &n);
-    if (n == 0 || (ind_t)n > dim) return -1;
-    adjpack_to_matrix(&k, mat, n);
     return 0;
 }
 */
@@ -317,7 +270,7 @@ char* d6_to_d6_canon(char *src, char *dst)
 
 static bool topo_sort(const graph *g, int n, int m, int *in_degree, int *q, int *order)
 {
-    // 1) stopnie wejściowe
+    // 1) input degrees
     for (int u = 0; u < n; ++u) {
         set *row = GRAPHROW(g, u, m);
         for (int v = 0; v < n; ++v) {
@@ -327,13 +280,13 @@ static bool topo_sort(const graph *g, int n, int m, int *in_degree, int *q, int 
         }
     }
 
-    // 2) kolejka wierzchołków o stopniu 0
+    // 2) queue of vertices with degree 0
     int head = 0, tail = 0;
     for (int v = 0; v < n; ++v) {
         if (in_degree[v] == 0) q[tail++] = v;
     }
 
-    // 3) przetwarzanie
+    // 3) processing
     int outc = 0;
     while (head < tail) {
         int u = q[head++];

@@ -4,6 +4,7 @@
 #include <glib.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <math.h>
 #include <xxhash.h>
 #include <nauty.h>
@@ -71,9 +72,9 @@ typedef struct {
 } FlatSet;
 void flat_init(FlatSet *s, size_t cap_hint);
 void flat_free(FlatSet *s);
-gboolean flat_lookup(const FlatSet *s, const key128_t *k);
-gboolean flat_remove(FlatSet *s, const key128_t *k);
-gboolean flat_insert(FlatSet *s, const key128_t *k);
+bool flat_lookup(const FlatSet *s, const key128_t *k);
+bool flat_remove(FlatSet *s, const key128_t *k);
+bool flat_insert(FlatSet *s, const key128_t *k);
 
 /* Opaque bucket type with two backends:
  *  - FLAT128 (open addressing; compact) when used with key128_hash/key128_equal

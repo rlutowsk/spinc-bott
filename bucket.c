@@ -86,7 +86,7 @@ static void flat_rehash(FlatSet *s, size_t new_cap) {
     *s = dst;
 }
 
-gboolean flat_lookup(const FlatSet *s, const key128_t *k) {
+bool flat_lookup(const FlatSet *s, const key128_t *k) {
     if (s->cap == 0) return FALSE;
     uint64_t h = hash16(k);
     size_t m = s->cap - 1, i = (size_t)(h & m);
@@ -133,7 +133,7 @@ static void flat_maybe_shrink(FlatSet *s)
     }
 }
 
-gboolean flat_remove(FlatSet *s, const key128_t *k) {
+bool flat_remove(FlatSet *s, const key128_t *k) {
     if (s->cap == 0) return FALSE;
 
     uint64_t h = hash16(k);
@@ -163,7 +163,7 @@ gboolean flat_remove(FlatSet *s, const key128_t *k) {
     }
 }
 
-gboolean flat_insert(FlatSet *s, const key128_t *k) {
+bool flat_insert(FlatSet *s, const key128_t *k) {
     if (s->cap == 0) flat_init(s, 1024);
 
     if (occupied_load(s) > MAX_OCCUPIED) {
@@ -210,22 +210,22 @@ gboolean flat_insert(FlatSet *s, const key128_t *k) {
 static void flat_reserve(FlatSet *s, size_t n_expected, double max_true) {
     if (n_expected == 0) return;
 
-    // ile slotów potrzeba, żeby (size / cap) <= max_true
+    // how many slots are needed so that (size / cap) <= max_true
     size_t need = (size_t)((double)n_expected / max_true) + 1;
 
     if (s->cap < need) {
-        flat_rehash(s, need);  // powiększy do najbliższej potęgi 2
+        flat_rehash(s, need);  // will round up to the nearest power of two
     } else if (s->dels > 0) {
-        // Warto skompaktować groby, jeśli już mamy pojemność
+        // It's worth compacting tombstones if we already have capacity
         flat_rehash(s, s->cap);
     }
 }
 
 /* ---- Hybrid bucket with shard locks ---- */
 struct _GHashBucket {
-    BucketKind kind;
-    gsize      nshards;
-    ATOMIC_ATTR gsize      number_of_elements;
+    BucketKind  kind;
+    gsize       nshards;
+    ATOMIC_ATTR gsize number_of_elements;
 
     /* Locks: one per shard (used in both modes). */
     GMutex    *locks;

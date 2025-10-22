@@ -104,7 +104,8 @@ static D6PACK_INLINE int d6pack_decode(const char *d6, key128_t *out, unsigned *
     unsigned need = 2 + groups;
     // hard length-check: input must be exactly 'need' chars
     for (unsigned i=0;i<need;i++) if (!p[i]) return 0;
-    if (p[need] != 0) return 0; // allow only properly NUL-terminated fixed-length strings
+    // ignore the case where the string is longer than needed
+    // if (p[need] != 0) return 0; // allow only properly NUL-terminated fixed-length strings
 
 #if D6PACK_HAVE_UINT128
     __uint128_t acc = 0;

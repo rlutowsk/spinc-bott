@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <omp.h>
+#include <stdbool.h>
 
 /* ensure we are in 64-bit environment */
 #include <bits/wordsize.h>
@@ -43,18 +44,28 @@ typedef uint64_t state_t;
 #endif
 
 /* cache holds possible values for bit-sequences of orientable RBMs */
-void populate_cache(vec_t **cache, size_t *size, const ind_t dim);
+void populate_cache(vec_t **cache, size_t *size, const int dim);
 
 /* allocate memory for RBM matrix */
 vec_t *init(const ind_t dim);
 
+/* --- get maximal possible state of the oriented RBM matrix --- */
+static inline state_t get_max_state(ind_t dim)
+{
+    state_t max_state = 1;
+    for (ind_t c = 0; c < dim - 1; ++c) {
+        max_state <<= (dim - c - 2);
+    }
+    return max_state - 1;
+}
+
 /* set values of rows of RBM matrix dpending on state */
 void matrix_by_state(vec_t *mat, const vec_t *cache, const state_t state, const ind_t dim);
 
-int is_upper_triangular(const vec_t *mat, const ind_t dim);
+bool is_upper_triangular(const vec_t *mat, const ind_t dim);
 
 /* main workers of this app */
-size_t is_spinc(const vec_t *mat, const ind_t dim);
+bool is_spinc(const vec_t *mat, const ind_t dim);
 
 static inline int row_sum(vec_t r)
 {
@@ -65,9 +76,29 @@ static inline int row_sum(vec_t r)
 #endif
 }
 
-int is_spin(const vec_t *mat, const ind_t dim);
+static inline bool is_orientable(const vec_t *mat, const ind_t dim)
+{
+    for (ind_t j = 0; j < dim; ++j) {
+        if (row_sum(mat[j]) & 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool is_spin(const vec_t *mat, const ind_t dim);
 
 void print_mat(const vec_t *mat, const ind_t dim);
+
+void swap_rows_and_cols(vec_t *src, vec_t *dst, ind_t dim, ind_t r1, ind_t r2);
+
+void conditional_add_col(const vec_t *src, vec_t *dst, ind_t dim, ind_t k);
+
+bool conditional_add_row(const vec_t *src, vec_t *dst, ind_t dim, ind_t l, ind_t m);
+
+int matrix_weight(const vec_t *mat, const ind_t dim);
+
+/* to delete - not needed anymore */
 
 extern const ind_t mat_characters[];
 
@@ -78,13 +109,5 @@ void decode_matrix(vec_t *mat, const ind_t dim, const char *buffer);
 char* matrix_to_digraph6(const vec_t *mat, int dim);
 
 int digraph6_to_matrix(const char *digraph6_str, vec_t *matrix, int n);
-
-void swap_rows_and_cols(vec_t *src, vec_t *dst, ind_t dim, ind_t r1, ind_t r2);
-
-void conditional_add_col(const vec_t *src, vec_t *dst, ind_t dim, ind_t k);
-
-int conditional_add_row(const vec_t *src, vec_t *dst, ind_t dim, ind_t l, ind_t m);
-
-int matrix_weight(const vec_t *mat, const ind_t dim);
 
 #endif /* BOTT_H */

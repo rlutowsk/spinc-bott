@@ -65,22 +65,32 @@ static ADJPACK_INLINE uint64_t bitreverse64(uint64_t x) {
 #if defined(__clang__) && __clang_major__ >= 5
     return __builtin_bitreverse64(x);
 #else
-    // Portable, and very efficient implementation as a fallback.
     x = ((x & 0x5555555555555555ULL) <<  1) | ((x >>  1) & 0x5555555555555555ULL);
     x = ((x & 0x3333333333333333ULL) <<  2) | ((x >>  2) & 0x3333333333333333ULL);
     x = ((x & 0x0F0F0F0F0F0F0F0FULL) <<  4) | ((x >>  4) & 0x0F0F0F0F0F0F0F0FULL);
-    x = ((x & 0x00FF00FF00FF00FFULL) <<  8) | ((x >>  8) & 0x00FF00FF00FF00FFULL);
-    x = ((x & 0x0000FFFF0000FFFFULL) << 16) | ((x >> 16) & 0x0000FFFF0000FFFFULL);
-    x = (x << 32) | (x >> 32);
-    return x;
+    #if defined(__GNUC__)
+        return __builtin_bswap64(x);
+    #else
+        x = ((x & 0x00FF00FF00FF00FFULL) <<  8) | ((x >>  8) & 0x00FF00FF00FF00FFULL);
+        x = ((x & 0x0000FFFF0000FFFFULL) << 16) | ((x >> 16) & 0x0000FFFF0000FFFFULL);
+        x = (x << 32) | (x >> 32);
+        return x;
+    #endif
 #endif
+}
+
+static ADJPACK_INLINE __uint128_t bitreverse128(__uint128_t x) {
+    uint64_t hi = (uint64_t)(x >> 64);
+    uint64_t lo = (uint64_t)x;
+    
+    return bitreverse64(hi) | ((__uint128_t)bitreverse64(lo) << 64);
 }
 
 // Packs adjacency matrix mat[n] into key128_t (compatible with digraph6)
 static ADJPACK_INLINE void adjpack_from_matrix(const vec_t *mat, unsigned n, key128_t *out) {
     assert(n >= 1 && n <= 11);
 #if D6PACK_HAVE_UINT128
-	out->u = 0;
+    out->u = 0;
     uint64_t row;
     for (unsigned i = 0; i < n; ++i) {
         row = bitreverse64(mat[i]) >> (64 - n);

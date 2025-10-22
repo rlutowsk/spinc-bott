@@ -25,19 +25,28 @@ int main(void) {
     unsigned n;
     size_t match = 0, unmatch = 0;
 
-    while (fgets(line, sizeof(line), stdin)) {
-        // Remove trailing newline
-        line[strcspn(line, "\n")] = 0;
+    FILE *in = fopen("test.d6", "r");
+    if (in == NULL) {
+        in = stdin;
+        printf("=== [pack] testing packing implementations for digraph6 strings from stdin ===\n");
+    } else {
+        printf("=== [pack] testing packing implementations for digraph6 strings from file 'test.d6' ===\n");
+    }
+    fflush(stdout);
+
+    while (fgets(line, sizeof(line), in)) {
 
         // Decode digraph6 string into key128_t
         if (!d6pack_decode(line, &key_from_d6, &n)) {
-            fprintf(stderr, "Invalid digraph6 string: %s\n", line);
+            line[strcspn(line, "\r\n")] = 0;
+            fprintf(stderr, "    Invalid digraph6 string: %s\n", line);
             continue;
         }
 
         // Convert digraph6 string to adjacency matrix
         if (matrix_from_d6(line, mat, n)<0) {
-            fprintf(stderr, "matrix_from_d6 failed for: %s\n", line);
+            line[strcspn(line, "\r\n")] = 0;
+            fprintf(stderr, "    matrix_from_d6 failed for: %s\n", line);
             continue;
         }
 
@@ -46,22 +55,25 @@ int main(void) {
 
         // Compare both keys
         if (memcmp(&key_from_d6, &key_from_mat, sizeof(key128_t)) != 0) {
-            printf("Mismatch for input: %s\n", line);
+            printf("    Mismatch for input: %s\n", line);
             ++unmatch;
-            print_key_bits(&key_from_d6, "d6:  ");
-            print_key_bits(&key_from_mat,"mat: ");
+            print_key_bits(&key_from_d6, "    d6:  ");
+            print_key_bits(&key_from_mat,"    mat: ");
             exit(1);
         } else {
             ++match;
         }
         adjpack_to_matrix(&key_from_mat, out, n);
         if (memcmp(mat, out, n*sizeof(vec_t)) != 0) {
-            fprintf(stderr, "packing - unpacking error\n");
+            fprintf(stderr, "    packing - unpacking error\n");
             exit(1);
         }
     }
 
-    printf("Matched: %lu. Unmatched: %lu.\n", match, unmatch);
+    printf("=== [pack] all tests passed. ===\n");
 
+    if (in != stdin) {
+        fclose(in);
+    }
     return 0;
 }
