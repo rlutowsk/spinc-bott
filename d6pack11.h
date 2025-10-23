@@ -15,7 +15,6 @@
 
 #include <stdint.h>
 #include <string.h>
-#include <assert.h>
 
 #if defined(__GNUC__) || defined(__clang__)
 #  define D6PACK_INLINE __attribute__((always_inline)) inline
@@ -172,11 +171,23 @@ static D6PACK_INLINE unsigned d6pack_encode_from_key(const key128_t *k, char *ou
     return (unsigned)(q - out_d6);
 }
 
-// Convenience: encode with explicit n (nie modyfikuje oryginalnego klucza)
+// --- Convenience: encode with explicit n (does not modify the input key) ---
 static D6PACK_INLINE unsigned d6pack_encode(const key128_t *k, unsigned n, char *out_d6)
 {
-    key128_t tmp = *k; d6pack_set_n(&tmp, n); d6pack_zero_above_nsquare(&tmp, n);
+    key128_t tmp = *k;
+    d6pack_zero_above_nsquare(&tmp, n);
+    d6pack_set_n(&tmp, n);
     return d6pack_encode_from_key(&tmp, out_d6);
+}
+
+// -------------------- key pack/unpack -------------------- 
+static D6PACK_INLINE void d6_to_key128(const char* d6, key128_t* out) {
+    unsigned n;
+    d6pack_decode(d6, out, &n);
+}
+static D6PACK_INLINE char* key128_to_d6(const key128_t* k, char *out_d6) {
+    d6pack_encode_from_key(k, out_d6);
+    return out_d6;
 }
 
 #endif // D6PACK11_H

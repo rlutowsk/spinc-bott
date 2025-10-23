@@ -3,7 +3,10 @@ CC  = @CC@
 GAC = gac
 
 # -- initial flags ---
-CFLAGS  ?= -I. @WARNINGS@ @APP_CFLAGS@
+CFLAGS  ?= @WARNINGS@
+CFLAGS  += -I. @BUILD_MODE_CFLAGS@
+LDFLAGS ?= 
+LDFLAGS += @BUILD_MODE_LDFLAGS@
 
 # -- Sources and targets ---
 OPENMP_SRC := mats.c backtrack.c minimalf.c uniqueg.c

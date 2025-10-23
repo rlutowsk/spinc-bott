@@ -1,6 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "common.h"
 #include "dag.h"
 
 /*
@@ -11,10 +9,10 @@
 int main(void) {
 
     int n;
-    char line[1024]; // Buffer for reading input lines
-    char d6[128];
+    char line[MAXLINE]; // Buffer for reading input lines
+    char d6[MAXLINE];
     
-    if (fgets(line, 1024, stdin) == NULL) {
+    if (fgets(line, sizeof(line), stdin) == NULL) {
         return 0;
     }
     n = graphsize(line);

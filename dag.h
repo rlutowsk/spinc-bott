@@ -1,8 +1,6 @@
 #ifndef DAG_H
 #define DAG_H
 
-#include "config.h"
-
 #include <nauty.h>
 #include <gtools.h>
 

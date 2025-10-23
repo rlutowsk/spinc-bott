@@ -2,45 +2,9 @@
 #define BUCKET_H
 
 #include <glib.h>
-#include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
 #include <math.h>
 #include <xxhash.h>
-#include <nauty.h>
-
-
-#if defined(HAVE_TLS) && (HAVE_TLS == 1)
-  #define NAUTY_HAS_TLS 1
-#else
-  #define NAUTY_HAS_TLS 0
-#endif
-
-
-#if NAUTY_HAS_TLS
-
-#   define G_MUTEX_LOCK(x)   g_mutex_lock(x)
-#   define G_MUTEX_UNLOCK(x) g_mutex_unlock(x)
-
-#   include <stdatomic.h>
-#   define ATOMIC_ATTR _Atomic
-
-#   define ATOMIC_GET(x) atomic_load_explicit(&(x), memory_order_relaxed)
-#   define ATOMIC_INC(x) atomic_fetch_add_explicit(&(x), 1, memory_order_relaxed)
-#   define ATOMIC_DEC(x) atomic_fetch_sub_explicit(&(x), 1, memory_order_relaxed)
-
-#else
-
-#   define G_MUTEX_LOCK(x)
-#   define G_MUTEX_UNLOCK(x)
-
-#   define ATOMIC_ATTR
-
-#define ATOMIC_GET(x) (x)
-#define ATOMIC_INC(x) ((x)++)
-#define ATOMIC_DEC(x) ((x)--)
-
-#endif
 
 #if HASH_MIXED_MODE == 1
 #   define __USE_GLIB
@@ -164,30 +128,6 @@ static inline gboolean key128_lt(const key128_t* a, const key128_t* b) {
 gboolean g_bucket_is_flat128 (GHashBucket *b);
 
 void g_bucket_reserve(GHashBucket *b, uint64_t total_expected);
-
-/* -------------------- key pack/unpack -------------------- */
-static inline void d6_to_key128(const char* d6, key128_t* out) {
-#ifndef D6PACK11_H
-    size_t L = strlen(d6);
-    if (G_UNLIKELY(L > K_LEN)) L = K_LEN;
-    memset(out->b, 0, K_LEN);
-    memcpy(out->b, d6, L);
-#else
-    unsigned n;
-    d6pack_decode(d6, out, &n);
-#endif
-}
-static inline char* key128_to_d6(const key128_t* k, char *out_d6) {
-#ifndef D6PACK11_H
-    const unsigned char *p = k->b;
-    size_t L = 0; while (L < K_LEN && p[L] != 0) ++L;
-    memcpy(out_d6, p, L);
-    out_d6[L] = '\0';
-#else
-    d6pack_encode_from_key(k, out_d6);
-#endif
-    return out_d6;
-}
 
 static inline size_t shards_for_cap_limit(uint64_t total_expected,
                      double   skew,        // np. 1.15

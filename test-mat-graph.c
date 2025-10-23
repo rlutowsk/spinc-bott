@@ -1,15 +1,10 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <assert.h>
-
+#include "common.h"
 #include "dag.h"
 #include "adjpack11.h"
 #include "d6pack11.h"  // for d6pack_decode
 
 int main(void) {
-    char line[128], buffer[128];
+    char line[MAXLINE], buffer[MAXLINE];
 
     vec_t mat_from_d6[11], mat_from_graph[11]; // max n = 11
     int n, m;

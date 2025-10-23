@@ -1,28 +1,4 @@
-#define _GNU_SOURCE
-#include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <assert.h>
-
-static inline uint64_t ns_now_monotonic(void) {
-    struct timespec ts;
-#if defined(CLOCK_MONOTONIC_RAW)
-    const clockid_t cid = CLOCK_MONOTONIC_RAW;
-#else
-    const clockid_t cid = CLOCK_MONOTONIC;
-#endif    
-    if (clock_gettime(cid, &ts) != 0) {
-        // W razie błędu spróbuj CLOCK_MONOTONIC jako fallback.
-        if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-            // awaryjnie — nie powinno się zdarzyć:
-            return 0;
-        }
-    }
-    return (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
-}
-
+#include "common.h"
 #include "dag.h"
 #include "adjpack11.h"
 #include "d6pack11.h"  // for d6pack_decode
@@ -94,7 +70,7 @@ int matrix_from_d6_2(char *s, vec_t * __restrict mat, ind_t dim)
 }
 
 int main(void) {
-    char line[128];
+    char line[MAXLINE];
     vec_t mat_1[11], mat_2[11]; // max n = 11
     size_t match = 0, unmatch = 0;
     uint64_t t1, t2,

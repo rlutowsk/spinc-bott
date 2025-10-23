@@ -1,10 +1,10 @@
-#include <stdio.h>
+#include "common.h"
 #include "dag.h"
 
 int main(void) {
     vec_t mat[64];
     int n;
-    char s[2048];
+    char s[MAXLINE];
     int all_even_out_degree;
 
     // Main loop to read one line (one graph) at a time

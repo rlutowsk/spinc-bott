@@ -1,7 +1,4 @@
-// upperg.c – wersja poprawiona
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
+#include "common.h"
 #include "dag.h"
 
 // Topologiczne sortowanie (Kahn), działa dla grafów skierowanych zapisanych
@@ -51,11 +48,11 @@ static bool topo_sort(const graph *g, int n, int m, int *order)
 */
 int main(void)
 {
-    int n;
-    char s[1024];
-    char d6[1024];
+    int   n;
+    char  s[MAXLINE];
+    char d6[MAXLINE];
 
-    if ( fgets(s, 1024, stdin)==NULL ) {
+    if ( fgets(s, sizeof(s), stdin)==NULL ) {
         fprintf(stderr, "file read error, quitting...\n");
         exit(1);
     }
