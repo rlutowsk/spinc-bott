@@ -1,12 +1,8 @@
-#include "bott.h"
 #include "common.h"
+#include "bott.h"
 #include "dag.h"
 #include "bucket.h"
 #include "adjpack11.h"
-
-#define MAXLINE 128
-
-#include <assert.h>
 
 #define INITIAL_CAPACITY 1024
 

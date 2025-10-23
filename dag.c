@@ -1,9 +1,7 @@
 #include "dag.h"
 #include "adjpack11.h"
 #include "d6pack11.h"
-#include <stdbool.h>
 
-#include <assert.h>
 _Static_assert(sizeof(vec_t) == sizeof(setword), "vec_t and setword types must match for memcpy optimization");
 // check at compile time if everything is as expected
 _Static_assert(sizeof(vec_t) == 8, "vec_t must be a 64-bit type.");

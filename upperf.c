@@ -1,14 +1,13 @@
-#include <stdio.h>
+#include "common.h"
 #include "dag.h"
 
 int main(void) {
-    vec_t mat[64];
+    vec_t mat[11];
     int n;
-    char s[2048];
+    char s[MAXLINE];
 
     // Main loop to read one line (one graph) at a time
     while (fgets(s, sizeof(s), stdin) != NULL) {
-        s[strcspn(s, "\r\n")] = 0;
         // 1. Determine the number of vertices (n) from the graph6 string.
         n = graphsize(s);
         if (n == 0) {

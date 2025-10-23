@@ -1,16 +1,16 @@
-#include <stdio.h>
+#include "common.h"
 #include "dag.h"
 #include "adjpack11.h"
 
 int main(void) {
     vec_t mat[11];
     unsigned n = 0;
-    char s[128];
+    char s[MAXLINE];
     key128_t k;
 
     // Main loop to read one line (one graph) at a time
     while (fgets(s, sizeof(s), stdin) != NULL) {
-        s[strcspn(s, "\r\n")] = 0;
+
         // 1. Determine the number of vertices (n) from the graph6 string.
         if (!d6pack_decode(s, &k, &n)) {
             continue; // Skip invalid or empty lines

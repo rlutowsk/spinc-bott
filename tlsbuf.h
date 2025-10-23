@@ -1,13 +1,12 @@
 #ifndef TLSBUF_H
 #define TLSBUF_H
 
-#include <stddef.h>
-#include <stdio.h>
+#include "common.h"
 
 /**
  * Thread-local output buffer to reduce contention on stdout.
  */
-typedef struct {
+typedef struct _OutputBuffer {
     char **lines;
     size_t count;
     size_t capacity;

@@ -1,14 +1,13 @@
-#include "bott.h"
 #include "common.h"
+
+#include "bott.h"
 #include "dag.h"    /* matrix_to_d6 */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+// #include <unistd.h>
 #include <omp.h>
-#include <time.h>
-#include <errno.h>
+// #include <errno.h>
 
 /* --- Pomoc dla CLI --- */
 static void help(const char *name)

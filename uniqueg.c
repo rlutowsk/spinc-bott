@@ -1,5 +1,4 @@
-#include <stdio.h>
-#include <stdbool.h>
+#include "common.h"
 #include "dag.h"
 #include "bucket.h"
 #include "adjpack11.h"
@@ -7,73 +6,27 @@
 #include "common.h"
 #include "tlsbuf.h"
 
+#include <omp.h>
+
 void help(const char *progname) {
     if (progname == NULL) progname = "uniqueg";
-    printf("Usage: %s [-c] [-h]\n", progname);
-    printf("Read d6-packed graphs from stdin and print unique codes to stdout.\n\n");
+    printf("Usage: %s [options]\n", progname);
+    printf("Read d6-packed graphs from stdin and write unique codes to stdout.\n\n");
     printf("Options:\n");
-    printf("  -c    Canonicalize before checking uniqueness.\n");
-    printf("  -h    Show this help message and exit.\n");
+    printf("  -c           Canonicalize graphs before checking uniqueness.\n");
+    printf("  -v           Increase verbosity (can be repeated).\n");
+    printf("  -j NUM       Number of OpenMP threads (default: %d).\n", omp_get_max_threads());
+    printf("  -n NUM       Number of hash shards (default: 256).\n");
+    printf("  -l SIZE      Batch size (number of lines) to process at once (default: 100000).\n");
+    printf("               SIZE accepts suffixes like k, M, G or binary Ki, Mi (examples: 500k, 2M, 1G, 2Mi).\n");
+    printf("  -i FILE      Read input from FILE instead of stdin.\n");
+    printf("  -o FILE      Write output to FILE instead of stdout.\n");
+    printf("  -h           Show this help message and exit.\n\n");
+    printf("Examples:\n");
+    printf("  cat graphs.d6 | %s -c -n 512 > uniques.d6\n", progname);
+    printf("  %s -j 8 -l 500k -i input.d6 -o uniques.d6\n", progname);
 }
 
-#define MAXLINE 64
-
-/*
-int main(int argc, char *argv[]) {
-
-    bool canon = false;
-
-    int opt = 1;
-    while ((opt = getopt(argc, argv, "ch")) != -1) {
-        switch (opt) {
-            case 'c':
-                canon = true;
-                break;
-            case 'h':
-                help(argv[0]);
-                exit(EXIT_SUCCESS);
-            default:
-                help(argv[0]);
-                exit(EXIT_FAILURE);
-        }
-    }
-
-    // create hash table
-    GHashBucket *code_set = g_bucket_new_128(NULL, NULL, 1023);
-    char         line[1024];
-    unsigned     n = 0;
-    key128_t     key;
-
-    if (fgets(line, sizeof(line), stdin) == NULL) {
-        // empty input
-        g_bucket_destroy(code_set); 
-        return 0;
-    }
-    line[strcspn(line, "\r\n")] = 0;
-    d6pack_decode(line, &key, &n);
-    init_nauty_data(n);
-    // Main loop to read one line (one graph) at a time
-    do {
-        line[strcspn(line, "\r\n")] = 0;
-        d6pack_decode(line, &key, &n);
-        if (canon){
-            vec_t m[11], c[11]; // max n = 11
-            adjpack_to_matrix(&key, m, n);
-            // Canonical key
-            matrix_to_matrix_canon(m, n, c);
-            adjpack_from_matrix(c, n, &key);
-        }
-        if ( g_bucket_insert_copy128(code_set, &key) ) {
-            printf("%s\n", line);
-        }
-    } while (fgets(line, sizeof(line), stdin) != NULL);
-
-    free_nauty_data();
-    // clean hash table
-    g_bucket_destroy(code_set); 
-    return 0;
-}
-*/
 int main(int argc, char *argv[]) {
 
     // always zero the timer at start of main
@@ -191,7 +144,6 @@ int main(int argc, char *argv[]) {
             for (size_t i = 0; i < line_count; ++i) {
                 line = lines[i];
 
-                line[strcspn(line, "\r\n")] = '\0'; // strip newline
                 d6pack_decode(line, &key, &n);
                 if (canon){
                     vec_t m[11], c[11]; // max n = 11

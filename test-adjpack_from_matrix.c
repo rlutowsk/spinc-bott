@@ -1,9 +1,4 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <time.h>
-#include <assert.h>
-#include <stdbool.h>
+#include "common.h"
 #include "adjpack11.h"
 #include "bucket.h"
 

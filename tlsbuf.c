@@ -1,6 +1,7 @@
 #include "tlsbuf.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include <omp.h>
 
 void buffer_init(OutputBuffer *buffer, size_t initial_capacity, FILE *out) {
@@ -21,7 +22,8 @@ void buffer_add(OutputBuffer *buffer, char* line) {
         {
             for (size_t i = 0; i < buffer->count; ++i) {
                 fputs(buffer->lines[i], buffer->out);
-                fputc('\n', buffer->out);
+                if (buffer->lines[i][strlen(buffer->lines[i])-1] != '\n')
+                    fputc('\n', buffer->out);
                 //free(buffer->lines[i]);
             }
         }
@@ -35,7 +37,8 @@ void buffer_flush(OutputBuffer *buffer) {
         {
             for (size_t i = 0; i < buffer->count; ++i) {
                 fputs(buffer->lines[i], buffer->out);
-                fputc('\n', buffer->out);
+                if (buffer->lines[i][strlen(buffer->lines[i])-1] != '\n')
+                    fputc('\n', buffer->out);
                 //free(buffer->lines[i]);
             }
         }

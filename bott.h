@@ -1,14 +1,9 @@
 #ifndef BOTT_H
 #define BOTT_H
 
-#include "config.h"
-
-#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <omp.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 /* ensure we are in 64-bit environment */
 #include <bits/wordsize.h>
@@ -22,26 +17,15 @@
 
 #define C(row,dim,j) ((row>>(j))&1)
 
-#include <stdint.h>
 
 typedef uint8_t  ind_t;
 typedef uint64_t state_t;
+typedef uint64_t vec_t;
 
-#if VEC_T_SIZE == 64
-    typedef uint64_t vec_t;
-#elif VEC_T_SIZE == 32
-    typedef uint32_t vec_t;
-#else
-    #error "wrong ind_t type"
-#endif
-
-#if VEC_T_SIZE == 64
-    #define scalar_product(a,b) (vec_t)__builtin_parityl((a)&(b))
-    //#define row_sum __builtin_popcountl
-#else
-    #define scalar_product(a,b) (vec_t)__builtin_parity((a)&(b))
-    //#define row_sum __builtin_popcount
-#endif
+static inline int scalar_product(vec_t a, vec_t b)
+{
+    return __builtin_parityl(a & b);
+}
 
 /* cache holds possible values for bit-sequences of orientable RBMs */
 void populate_cache(vec_t **cache, size_t *size, const int dim);

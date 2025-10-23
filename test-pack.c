@@ -1,9 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <assert.h>
-
+#include "common.h"
 #include "dag.h"
 #include "adjpack11.h"
 #include "d6pack11.h"  // for d6pack_decode
@@ -19,7 +14,7 @@ void print_key_bits(const key128_t *k, const char *label) {
 }
 
 int main(void) {
-    char line[128];
+    char line[MAXLINE];
     key128_t key_from_d6, key_from_mat;
     vec_t mat[11], out[11]; // max n = 11
     unsigned n;

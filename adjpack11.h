@@ -1,8 +1,6 @@
 #ifndef ADJPACK11_H
 #define ADJPACK11_H
 
-#include <stdint.h>
-#include <string.h>
 #include <assert.h>
 #include "d6pack11.h"
 #include "bott.h"

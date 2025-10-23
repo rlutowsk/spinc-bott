@@ -1,8 +1,18 @@
+#include "common.h"
+
+#if NAUTY_HAS_TLS
+
+#   define G_MUTEX_LOCK(x)   g_mutex_lock(x)
+#   define G_MUTEX_UNLOCK(x) g_mutex_unlock(x)
+
+#else
+
+#   define G_MUTEX_LOCK(x)
+#   define G_MUTEX_UNLOCK(x)
+
+#endif
+
 #include "bucket.h"
-#include <string.h>
-#include <xxhash.h>
-#include <stdlib.h>
-#include <stdio.h>
 
 #ifndef MIN_TRUE
 #define MIN_TRUE 0.20

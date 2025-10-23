@@ -1,29 +1,26 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include <omp.h>
+#include "common.h"
 #include "bucket.h"
 #include "dag.h"
 #include "adjpack11.h"
 #include "parse_scaled.h"
-#include "common.h"
 #include "tlsbuf.h"
+
+#include <omp.h>
 
 static void help(const char *progname) {
     fprintf(stderr,
-        "Usage: %s [-j num_threads] [-n num_shards] [-l lines_capacity] [-v]\n"
-        "  -j NUM   Number of threads (default: 24)\n"
+        "Usage: %s [-j num_threads] [-n num_shards] [-l lines_capacity] [-i input] [-o output] [-v] [-u]\n"
+        "  -j NUM   Number of threads (default: max available)\n"
         "  -n NUM   Number of hash shards (default: 256)\n"
-        "  -l NUM   Input lines per batch (default: 100000)\n"
+        "  -l NUM   Input lines per batch (default: 100000, accepts k/M/G suffixes)\n"
+        "  -i FILE  Input file (default: stdin)\n"
+        "  -o FILE  Output file (default: stdout), use '-' for stdout also\n"
         "  -u       Output unique representatives only\n"
         "  -v       Increase verbosity (can be repeated)\n"
         "  -h       Show this help message\n",
         progname);
 }
 
-#define MAXLINE 128
-#include <assert.h>
 #define INITIAL_CAPACITY 1024
 
 typedef struct {
@@ -274,7 +271,6 @@ int main(int argc, char *argv[]) {
             for (size_t i = 0; i < line_count; ++i) {
                 line = lines[i];
 
-                line[strcspn(line, "\r\n")] = '\0'; // strip newline
                 d6_to_key128(line, &seedk);
 
                 // Minimality test via forward orbit (matches orbitg semantics now)

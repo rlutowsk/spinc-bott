@@ -1,5 +1,5 @@
+#include "common.h"
 #include "bott.h"
-#include <nauty.h>
 #include <assert.h>
 
 void populate_cache(vec_t **cache, size_t *size, const int dim)

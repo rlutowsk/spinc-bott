@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include "common.h"
 #include "dag.h"
 #include "bott.h"
 #include "adjpack11.h"
@@ -6,12 +6,11 @@
 int main(void) {
     vec_t mat[11];
     unsigned n;
-    char s[128];
+    char s[MAXLINE];
     key128_t k;
 
     // Main loop to read one line (one graph) at a time
     while (fgets(s, sizeof(s), stdin) != NULL) {
-        s[strcspn(s, "\r\n")] = 0;
 
         // 1. Write d6 code to key128_t k and determine the number of vertices (n).
         if (!d6pack_decode(s, &k, &n)) {

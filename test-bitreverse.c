@@ -1,10 +1,6 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <time.h>
-#include <assert.h>
-#include <stdbool.h>
+#include "common.h"
 #include "adjpack11.h"
+#include <inttypes.h>
 
 #if defined(__clang__) && __clang_major__ >= 5
 static ADJPACK_INLINE uint64_t bitreverse64_legacy(uint64_t x) {
