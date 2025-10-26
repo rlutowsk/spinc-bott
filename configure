@@ -3927,7 +3927,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 if test "x$ac_cv_env_CFLAGS_set" = x
 then :
 
-        CFLAGS="-Ofast -march=native"
+        CFLAGS="-O3 -march=native"
 
 fi
 

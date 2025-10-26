@@ -115,6 +115,26 @@ static ADJPACK_INLINE void adjpack_from_matrix(const vec_t *mat, unsigned n, key
     adjpack_set_n(out, n);
 }
 
+// For small values of n, graph stores adjaceny matrix starting from the oldest bits, for example
+// 10100...0 (64 bits long for us)
+// says that from the vertex there are arrows to the 0th and 2nd vertices.
+// To pack it, it is snough to shift this information by (64-n) places.
+static ADJPACK_INLINE void adjpack_from_graph(const graph *g, unsigned n, int m, key128_t *out) {
+    assert(n >= 1 && n <= 11);
+#if D6PACK_HAVE_UINT128
+    out->u = 0;
+    for (unsigned i = 0; i < n; ++i) {
+        set *gi = GRAPHROW(g,i,m);
+        out->u <<= n;
+        out->u |= (uint64_t)*gi >> (64 - n);
+    }
+#else
+# error "adjpack_from_graph not implemented outside 128 bit"
+#endif
+    adjpack_zero_above_nsquare(out, n);
+    adjpack_set_n(out, n);
+}
+
 
 // Unpacks key128_t into adjacency matrix mat[n]
 static ADJPACK_INLINE void adjpack_to_matrix(const key128_t *k, uint64_t *mat_out, unsigned n) {

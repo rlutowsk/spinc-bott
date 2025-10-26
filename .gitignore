@@ -4,8 +4,6 @@
 *.lo
 *.o
 *.so
-*.sh
-!testall.sh
 autom4te.cache
 config.h
 config.log
@@ -15,3 +13,4 @@ test.d6
 Makefile
 gap.g
 .vscode/
+*.log

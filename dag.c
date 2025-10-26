@@ -258,12 +258,36 @@ vec_t* matrix_to_matrix_canon(const vec_t *mat, int n, vec_t *out)
     return out;
 }
 
-char* d6_to_d6_canon(char *src, char *dst)
+key128_t *matrix_to_key128_canon(const vec_t *mat, int n, key128_t *key)
+{
+    if (key == NULL) {
+        return NULL;
+    }
+    /* generate graph from mat */
+    matrix_to_graph(dag_g, mat);
+    /* canonize the graph */
+    generate_canon_digraph(dag_m, dag_n);
+
+    adjpack_from_graph(dag_canong, dag_n, dag_m, key);
+    return key;
+}
+
+char* d6_to_d6_canon(const char *src, char *dst)
 {
     EMPTYGRAPH( dag_g, dag_m, dag_n );
-    stringtograph( src, dag_g, dag_m );
+    stringtograph( (char*)src, dag_g, dag_m );
     generate_canon_digraph( dag_m, dag_n );
     return graph_to_d6( dag_canong, dag_m, dag_n, dst );
+}
+
+key128_t* d6_to_key128_canon(const char *src, key128_t *key)
+{
+    EMPTYGRAPH( dag_g, dag_m, dag_n );
+    stringtograph( (char*)src, dag_g, dag_m );
+    generate_canon_digraph( dag_m, dag_n );
+
+    adjpack_from_graph(dag_canong, dag_n, dag_m, key);
+    return key;
 }
 
 static bool topo_sort(const graph *g, int n, int m, int *in_degree, int *q, int *order)

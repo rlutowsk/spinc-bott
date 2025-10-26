@@ -11,7 +11,7 @@ int main(void) {
 
     // Main loop to read one line (one graph) at a time
     while (fgets(s, sizeof(s), stdin) != NULL) {
-
+        remove_newline(s);
         // 1. Write d6 code to key128_t k and determine the number of vertices (n).
         if (!d6pack_decode(s, &k, &n)) {
             continue; // Skip invalid or empty lines

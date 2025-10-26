@@ -9,11 +9,11 @@ LDFLAGS ?=
 LDFLAGS += @BUILD_MODE_LDFLAGS@
 
 # -- Sources and targets ---
-OPENMP_SRC := mats.c backtrack.c minimalf.c uniqueg.c
+OPENMP_SRC := mats.c backtrack.c minimalf.c uniqueg.c orientedg.c
 OPENMP_APP := $(patsubst %.c, %, $(OPENMP_SRC))
 OPENMP_OBJ := tlsbuf.o
 
-NAUTY_SRC := mats.c backtrack.c orientedf.c upperg.c upperf.c canonicalg.c uniqueg.c spinf.c spincf.c orbitg.c minimalf.c
+NAUTY_SRC := mats.c backtrack.c orientedf.c orientedg.c upperg.c upperf.c canonicalg.c uniqueg.c spinf.c spincf.c orbitg.c minimalf.c
 NAUTY_SRC += $(wildcard test-*.c)
 NAUTY_APP := $(patsubst %.c, %, $(NAUTY_SRC))
 NAUTY_OBJ := dag.o bucket.o
@@ -60,7 +60,7 @@ $(NAUTY_APP): OBJ     += $(NAUTY_OBJ)
 
 # This rule modifies the CFLAGS for compiling bucket.o by appending GLIB and XXHASH specific flags.
 # It also specifies that bucket.o depends on the header file d6pack11.h, ensuring that changes to the header trigger recompilation.
-bucket.o: CFLAGS += @GLIB_CFLAGS@ @XXHASH_CFLAGS@
+# bucket.o: CFLAGS += @GLIB_CFLAGS@ @XXHASH_CFLAGS@
 bucket.o: d6pack11.h
 
 minimalf.o: adjpack11.h parse_scaled.h

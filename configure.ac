@@ -10,7 +10,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_PROG_CC
 AS_IF([test "x$ac_cv_env_CFLAGS_set" = x],
       [
-        CFLAGS="-Ofast -march=native"
+        CFLAGS="-O3 -march=native"
       ])
 
 AC_PROG_CXX

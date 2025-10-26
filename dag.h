@@ -3,6 +3,7 @@
 
 #include <nauty.h>
 #include <gtools.h>
+#include "d6pack11.h"
 
 /**
  * @brief Converts a nauty graph to a digraph6 (d6) string representation.
@@ -80,7 +81,11 @@ char* matrix_to_d6_canon(const vec_t *mat, int dim, char *dag_gcode);
 
 vec_t* matrix_to_matrix_canon(const vec_t *mat, int n, vec_t *out);
 
-char* d6_to_d6_canon(char *src, char *dst);
+key128_t *matrix_to_key128_canon(const vec_t *mat, int n, key128_t *key);
+
+char* d6_to_d6_canon(const char *src, char *dst);
+
+key128_t* d6_to_key128_canon(const char *src, key128_t *key);
 
 char *d6_to_d6_upper(char *src, char *dst);
 
