@@ -23,7 +23,7 @@ static ADJPACK_INLINE uint64_t bitreverse64_legacy(uint64_t x) {
 
 static ADJPACK_INLINE __uint128_t bitreverse128_native(__uint128_t x) {
 #if defined(__clang__) && __clang_major__ >= 18
-    return __builtin_bitreverse128(x);
+    return (((__uint128_t)__builtin_bitreverse64((uint64_t)x))<<64) | (__uint128_t)__builtin_bitreverse64((uint64_t)(x >> 64));
 #else
     // Maski 128-bitowe zbudowane z dwóch 64-bitowych części
     const __uint128_t mask_1 = ((__uint128_t)0x5555555555555555ULL << 64) | 0x5555555555555555ULL;
