@@ -244,7 +244,7 @@ int main(int argc, char *argv[]) {
     }
 
     size_t batch_num = 0;
-    size_t ATOMIC_ATTR num_of_reps = 0;
+    size_t num_of_reps = 0;
 
     while (true) {
         // read lines_capacity lines or until EOF
@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
         }
         if (line_count == 0) break;
 
-        printlog(2, "Processing batch %zu; reps found: %zu.", ++batch_num, ATOMIC_GET(num_of_reps));
+        printlog(2, "Processing batch %zu; reps found: %zu.", ++batch_num, num_of_reps);
 
         #pragma omp parallel
         {
