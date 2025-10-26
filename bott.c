@@ -26,18 +26,9 @@ void populate_cache(vec_t **cache, size_t *size, const int dim)
 
 vec_t *init(const ind_t dim)
 {
-    vec_t *mat = (vec_t*)malloc(sizeof(vec_t) * dim);
-    memset(mat, 0, sizeof(vec_t) * dim);
+    vec_t *mat = (vec_t*)calloc(dim, sizeof(vec_t));
+    // memset(mat, 0, sizeof(vec_t) * dim);
     return mat;
-}
-
-void matrix_by_state(vec_t *mat, const vec_t *cache, const state_t state, const ind_t dim)
-{
-    state_t mask;
-    for (int i=1, c=1, j=dim-3; j>=0; c+=i++, j--) {
-        mask = ((state_t)1<<i) - 1;
-        mat[j] = cache[(state>>(c-1))&mask];
-    }
 }
 
 void print_mat(const vec_t *mat, const ind_t dim)
@@ -52,23 +43,11 @@ void print_mat(const vec_t *mat, const ind_t dim)
     }
 }
 
-static inline bool equal_cols(const vec_t *mat, const ind_t dim, const ind_t i, const ind_t j)
+static INLINE bool equal_cols(const vec_t *mat, const ind_t dim, const ind_t i, const ind_t j)
 {
     vec_t mask = (1<<i) ^ (1<<j);
     for (ind_t r=0; r<dim; r++) {
         if (scalar_product(mat[r],mask)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool is_upper_triangular(const vec_t *mat, const ind_t dim)
-{
-    vec_t row_mask = 1;
-    for (ind_t i=1; i<dim; ++i) {
-        row_mask |= (1u<<i);
-        if ( mat[i] & row_mask ) {
             return false;
         }
     }

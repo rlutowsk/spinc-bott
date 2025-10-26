@@ -2,6 +2,8 @@
 
 #include "bott.h"
 #include "dag.h"    /* matrix_to_d6 */
+#include "bucket.h"
+#include "tlsbuf.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +29,7 @@ static void help(const char *name)
 
 /* global */
 int calculate_spin = 0;
+GHashBucket *g_canonical_set = NULL;
 
 /* --- I/O buffer per‑task for d6 codes --- */
 struct out_ctx {
@@ -36,7 +39,7 @@ struct out_ctx {
     size_t used;        /* how many bytes are used */
     size_t cap;         /* buffer capacity */
 };
-#define OUTBUF_CAP (1u<<20) /* ~1 MiB per task */
+#define OUTBUF_CAP (1u<<26) /* ~64 MiB per task */
 
 static inline void out_flush(struct out_ctx *out)
 {
@@ -52,6 +55,16 @@ static inline void out_flush(struct out_ctx *out)
 static inline void out_append_line(struct out_ctx *out, const char *line)
 {
     if (!out || !out->enabled) return;
+    
+    // char buf[MAXLINE];
+    key128_t key;
+    // d6_to_d6_canon(line, buf);
+    // d6_to_key128(buf, &key);
+    d6_to_key128_canon(line, &key);
+    if (!g_bucket_insert_copy128(g_canonical_set, &key)) {
+        return;
+    }
+
     size_t len = strlen(line);
     if (out->used + len + 1 >= out->cap) {
         out_flush(out);
@@ -75,32 +88,6 @@ static inline void decrease_dimension(vec_t *mat, ind_t dim)
 size_t backtrack(vec_t *mat, vec_t **cache, ind_t cdim, ind_t ddim,
                  size_t *spinc, size_t *spin, struct out_ctx *out);
 
-/* --- Progress monitor: prints to the specified stream (stderr with -o) --- */
-static void monitor_progress(unsigned long *progress_ptr, unsigned long total, FILE *stream)
-{
-    const double period = 0.25;
-    double next = omp_get_wtime();
-    struct timespec ts = { .tv_sec = 0, .tv_nsec = 50 * 1000 * 1000 }; /* 50 ms */
-    unsigned long cur;
-    double now, pct;
-
-    for (;;) {    
-        #pragma omp atomic read
-            cur = *progress_ptr;
-        
-        if (cur >= total) break;
-
-        now = omp_get_wtime();
-        if (now >= next) {
-            pct = (total == 0) ? 100.0 : (100.0 * (double)cur / (double)total);
-            fprintf(stream, "\33[2K\r%8.4f%%", pct);
-            fflush(stream);
-            next = now + period;
-        }
-        nanosleep(&ts, NULL);
-    }
-}
-
 /* -------------------- main -------------------- */
 int main(int argc, char *argv[])
 {
@@ -117,6 +104,8 @@ int main(int argc, char *argv[])
     size_t spinc = 0, spin = 0;
     size_t cache_size;
 
+    int nthreads = omp_get_max_threads();
+
     /* -o */
     int output_enabled = 0;
     const char *out_path = NULL;
@@ -131,7 +120,7 @@ int main(int argc, char *argv[])
         case 'n': no_output = 1; break;
         case 'a': calculate_spin = 1; break;
         case 'v': verbosity_level++; break;
-        case 'j': omp_set_num_threads(atoi(optarg)); break;
+        case 'j': nthreads = atoi(optarg); omp_set_num_threads(nthreads); break;
         case 'd': dim  = (ind_t)atoi(optarg); break;
         case 's': sdim = (ind_t)atoi(optarg); break;
         case 'o': output_enabled = 1; out_path = optarg; break;
@@ -182,15 +171,19 @@ int main(int argc, char *argv[])
     const unsigned long total_iters = (unsigned long)(loop_stop - loop_start + 1);
 
     /* task granularity selection: ~8 tasks per thread, with safe limits */
-    int nthreads = omp_get_num_threads();
     unsigned long target_tasks = (unsigned long)(nthreads > 0 ? nthreads : 1) * 8ul;
     unsigned long grain = (total_iters + target_tasks - 1) / (target_tasks ? target_tasks : 1);
     if (grain < 256ul)   grain = 256ul;
-    if (grain > 65536ul) grain = 65536ul;
+    if (grain > 131072ul) grain = 131072ul;
 
-    printlog(2, "iteration range: %lu..%lu (total=%lu)\n",
+    if (progress_enabled) {
+        // one thread will be for showing progress, not calculations
+        omp_set_num_threads(nthreads+1);
+    }
+
+    printlog(2, "iteration range: %lu..%lu (total=%lu)",
              (unsigned long)loop_start, (unsigned long)loop_stop, total_iters);
-    printlog(2, "openmp task grain set to %lu iterations\n", grain);
+    printlog(2, "openmp task grain set to %lu iterations", grain);
 
     /* progress and streams */
     static unsigned long progress = 0;
@@ -200,6 +193,12 @@ int main(int argc, char *argv[])
     FILE *progress_stream = output_enabled ? stderr : stdout;
     FILE *summary_stream  = (output_enabled ? stderr : stdout);
 
+    g_canonical_set = g_bucket_new_128( NULL, NULL, 1023 );
+    if (g_canonical_set==NULL) {
+        fprintf(stderr, "error in creating GHashBucket, quitting...\n");
+        exit(1);
+    }
+    printlog(1, "%s: starting calculations", argv[0]);
     /* ------------------ Parallelism (tasks) ------------------ */
     #pragma omp parallel
     #pragma omp single nowait
@@ -238,6 +237,7 @@ int main(int argc, char *argv[])
                         }
                     }
 
+                    init_nauty_data(dim);
                     for (state_t s = (state_t)base; s <= (state_t)end; ++s) {
                         matrix_by_state(&tmat[row], cache[sdim], s, sdim);
                         if (is_spinc(&tmat[row], sdim)) {
@@ -245,6 +245,7 @@ int main(int argc, char *argv[])
                             decrease_dimension(tmat, dim);
                         }
                     }
+                    free_nauty_data();
 
                     /* flush the code buffer and clean up */
                     if (out.enabled) {
@@ -281,6 +282,7 @@ int main(int argc, char *argv[])
         fprintf(progress_stream, "\33[2K\r%8.4f%%\n", 100.0);
         fflush(progress_stream);
     }
+    printlog(1, "%s: calculations finished", argv[0]);
 
     /* Final log */
     if (calculate_spin) {
@@ -305,6 +307,8 @@ int main(int argc, char *argv[])
     if (output_enabled && out_fp && out_fp != stdout) {
         fclose(out_fp);
     }
+
+    g_bucket_destroy(g_canonical_set);
 
     /* clean up cache */
     for (int i = sdim; i < 12; ++i) { free(cache[i]); }

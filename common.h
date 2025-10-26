@@ -95,4 +95,9 @@ void printlog(unsigned int v, const char *format, ...);
 
 void increase_verbosity(void);
 
+static INLINE void remove_newline(char *s)
+{
+    s[strcspn(s, "\r\n")] = 0;
+}
+
 #endif

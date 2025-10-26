@@ -16,15 +16,15 @@ void print_key_bits(const key128_t *k, const char *label) {
 int main(void) {
     char line[MAXLINE];
 	char d6[MAXLINE];
-    key128_t key_from_d6, key_from_mat;
+    key128_t key_from_d6, key_from_mat, key_from_graph;
     vec_t mat[11], out[11]; // max n = 11
-    size_t match = 0, unmatch = 0;
     uint64_t t1, t2,
         t_d6_to_canon = 0,
         t_matrix_from_d6 = 0,
         t_matrix_to_matrix_canon = 0,
         t_adjpack_from_matrix = 0,
-        t_d6pack_decode = 0;
+        t_d6pack_decode = 0,
+        t_matrix_to_key128_canon = 0;
     int rval;
 
 
@@ -85,13 +85,20 @@ int main(void) {
         t_adjpack_from_matrix += (t2 - t1);
         // Compare both keys
         if (memcmp(&key_from_d6, &key_from_mat, sizeof(key128_t)) != 0) {
-            printf("    Mismatch for input: %s\n", line);
-            ++unmatch;
+            printf("    Mismatch (mat) for input: %s\n", line);
             print_key_bits(&key_from_d6, "    d6:  ");
             print_key_bits(&key_from_mat,"    mat: ");
             exit(1);
-        } else {
-            ++match;
+        }
+        t1 = ns_now_monotonic();
+        matrix_to_key128_canon(mat, n, &key_from_graph);
+        t2 = ns_now_monotonic();
+        t_matrix_to_key128_canon += (t2 - t1);
+        if (memcmp(&key_from_d6, &key_from_graph, sizeof(key128_t)) != 0) {
+            printf("    Mismatch (graph) for input: %s\n", line);
+            print_key_bits(&key_from_d6,   "    d6:    ");
+            print_key_bits(&key_from_graph,"    graph: ");
+            exit(1);
         }
     }
     free_nauty_data();
@@ -106,6 +113,7 @@ int main(void) {
     printf("    matrix_from_d6:        %15lu\n", t_matrix_from_d6);
     printf("    matrix_to_matrix_canon:%15lu\n", t_matrix_to_matrix_canon);
     printf("    adjpack_from_matrix:   %15lu\n", t_adjpack_from_matrix);
+    printf("    matrix_to_key128_canon:%15lu\n", t_matrix_to_key128_canon);
     printf("=== [canon] all tests passed ===\n");
     return 0;
 }
