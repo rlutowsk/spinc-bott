@@ -215,7 +215,8 @@ int main(int argc, char *argv[]) {
     verbosity_level = v;
 
     size_t line_count = 0;
-    char buffer[MAXLINE];
+    char *buffer = (char*)malloc(MAXLINE * lines_capacity * sizeof(char));
+    assert(buffer != NULL);
 
     printlog(1, "Using %d threads, %d shards, batch size %zu", num_threads, num_shards, lines_capacity);
 
@@ -232,7 +233,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "error reading input\n");
         exit(1);
     }
-    lines[line_count++] = strdup(buffer);
+    lines[line_count++] = buffer;
 
     dim = graphsize(buffer);
     assert(dim > 0 && dim <= 11);
@@ -245,11 +246,15 @@ int main(int argc, char *argv[]) {
 
     size_t batch_num = 0;
     size_t num_of_reps = 0;
-
+    char *curr = &buffer[strlen(buffer)];
+         *curr++ = '\0';
+ 
     while (true) {
         // read lines_capacity lines or until EOF
-        while (line_count < lines_capacity && fgets(buffer, MAXLINE, in)) {
-            lines[line_count++] = strdup(buffer);
+        while (line_count < lines_capacity && fgets(curr, MAXLINE, in)) {
+            lines[line_count++] = curr;
+            curr += strlen(curr);
+            *curr++ = '\0';
         }
         if (line_count == 0) break;
 
@@ -267,7 +272,7 @@ int main(int argc, char *argv[]) {
             char *line;
             key128_t seedk;
 
-            #pragma omp for schedule(dynamic, 100)
+            #pragma omp for schedule(dynamic, 1000)
             for (size_t i = 0; i < line_count; ++i) {
                 line = lines[i];
 
@@ -302,11 +307,13 @@ int main(int argc, char *argv[]) {
             buffer_flush(&thread_buffer);
             buffer_destroy(&thread_buffer);
         }
-        for (size_t i = 0; i < line_count; ++i) free(lines[i]);
+        //for (size_t i = 0; i < line_count; ++i) free(lines[i]);
         line_count = 0; // reset for next batch
+        curr = buffer;
     }
 
     free(lines);
+    free(buffer);
 
     printlog(1, "Done. Found %lu representatives", num_of_reps); //g_bucket_size(g_canonical_set));
 
