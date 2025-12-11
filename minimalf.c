@@ -163,6 +163,8 @@ int main(int argc, char *argv[]) {
     int v = 0;
     bool unique = false;
 
+    double time_start = omp_get_wtime();
+
     FILE *in = stdin, *out = stdout;
 
     int opt = 1;
@@ -214,7 +216,6 @@ int main(int argc, char *argv[]) {
     // variables
     verbosity_level = v;
 
-    size_t line_count = 0;
     char *buffer = (char*)malloc(MAXLINE * lines_capacity * sizeof(char));
     assert(buffer != NULL);
 
@@ -222,6 +223,10 @@ int main(int argc, char *argv[]) {
 
     char **lines = malloc(lines_capacity * sizeof(char*));
     assert(lines != NULL);
+    for (size_t i = 0; i < lines_capacity; ++i) {
+        lines[i] = buffer + i * MAXLINE;
+        *lines[i] = '\0';
+    }
 
 #if !NAUTY_HAS_TLS
     fprintf(stderr, "Warning: nauty without TLS support, using single thread!\n");
@@ -233,9 +238,11 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "error reading input\n");
         exit(1);
     }
-    lines[line_count++] = buffer;
+    // lines[line_count++] = buffer;
+    // lines[0] points to buffer anyway
+    size_t line_count = 1;
 
-    dim = graphsize(buffer);
+    dim = graphsize(lines[0]);
     assert(dim > 0 && dim <= 11);
 
     // Global dedup across orbits by CANONICAL key
@@ -246,20 +253,20 @@ int main(int argc, char *argv[]) {
 
     size_t batch_num = 0;
     size_t num_of_reps = 0;
-    char *curr = &buffer[strlen(buffer)];
-         *curr++ = '\0';
- 
+    double start, read_time = 0, comp_time = 0;
+
     while (true) {
+        start = omp_get_wtime();
         // read lines_capacity lines or until EOF
-        while (line_count < lines_capacity && fgets(curr, MAXLINE, in)) {
-            lines[line_count++] = curr;
-            curr += strlen(curr);
-            *curr++ = '\0';
+        while (line_count < lines_capacity && fgets(lines[line_count], MAXLINE, in)) {
+            ++line_count;
         }
+        read_time += omp_get_wtime() - start;
         if (line_count == 0) break;
 
         printlog(2, "Processing batch %zu; reps found: %zu.", ++batch_num, num_of_reps);
 
+        start = omp_get_wtime();
         #pragma omp parallel
         {
             OutputBuffer thread_buffer;
@@ -298,7 +305,7 @@ int main(int argc, char *argv[]) {
                     }
                 }
             }
-            
+
             #pragma omp atomic
                 num_of_reps += local_reps;
 
@@ -307,14 +314,17 @@ int main(int argc, char *argv[]) {
             buffer_flush(&thread_buffer);
             buffer_destroy(&thread_buffer);
         }
+        comp_time += omp_get_wtime() - start;
         //for (size_t i = 0; i < line_count; ++i) free(lines[i]);
         line_count = 0; // reset for next batch
-        curr = buffer;
+        // curr = buffer;
     }
 
     free(lines);
     free(buffer);
 
+    double time_end = omp_get_wtime();
+    printlog(2, "Times. Reading: %.3fs. Computations: %.3fs. Ratio: %.4f. Total: %.3fs. Ratio: %.4f", read_time, comp_time, comp_time/(read_time+comp_time), time_end - time_start, comp_time/(time_end - time_start));
     printlog(1, "Done. Found %lu representatives", num_of_reps); //g_bucket_size(g_canonical_set));
 
     if (g_canonical_set) {
