@@ -253,51 +253,67 @@ int main(int argc, char *argv[]) {
 
     size_t batch_num = 0;
     size_t num_of_reps = 0;
-    double start, read_time = 0, comp_time = 0;
+    double read_time = 0, comp_time = 0;
 
-    while (true) {
-        start = omp_get_wtime();
-        // read lines_capacity lines or until EOF
-        while (line_count < lines_capacity && fgets(lines[line_count], MAXLINE, in)) {
-            ++line_count;
-        }
-        read_time += omp_get_wtime() - start;
-        if (line_count == 0) break;
+    #pragma omp parallel
+    {
+        // *** Per thread buffer for output lines
+        OutputBuffer thread_buffer;
+        buffer_init(&thread_buffer, 5000, out);
 
-        printlog(2, "Processing batch %zu; reps found: %zu.", ++batch_num, num_of_reps);
+        init_nauty_data(dim);
 
-        start = omp_get_wtime();
-        #pragma omp parallel
-        {
-            OutputBuffer thread_buffer;
-            buffer_init(&thread_buffer, 1000, out);
+        for (;;) {
+            double start = 0.0;
 
-            init_nauty_data(dim);
+            // *** Single thread reads a batch
+            #pragma omp single
+            {
+                start = omp_get_wtime();
+                while (line_count < lines_capacity && fgets(lines[line_count], MAXLINE, in)) {
+                    ++line_count;
+                }
+                read_time += omp_get_wtime() - start;
+
+                if (line_count != 0) {
+                    printlog(2, "Processing batch %zu; reps found: %zu.", ++batch_num, num_of_reps);
+                }
+            }
+
+            // *** Barrier synchronizing — all see line_count
+            #pragma omp barrier
+
+            if (line_count == 0) {
+                // *** End of data – exit per-thread loop
+                break;
+            }
+
+            // *** Processing batch – each thread operates on its own buffer
+            double comp_start = omp_get_wtime();
 
             size_t local_reps = 0;
 
-            char *line;
-            key128_t seedk;
-
-            #pragma omp for schedule(dynamic, 1000)
+            #pragma omp for schedule(dynamic,1000)
             for (size_t i = 0; i < line_count; ++i) {
-                line = lines[i];
+                char *line = lines[i];
 
+                key128_t seedk;
                 d6_to_key128(line, &seedk);
 
-                // Minimality test via forward orbit (matches orbitg semantics now)
+                // Minimality test via forward orbit
                 if (is_orbit_minimum(&seedk)) {
                     if (unique) {
                         vec_t m[dim], c[dim];
                         adjpack_to_matrix(&seedk, m, dim);
-                        // Canonical key for global dedup (and consistent with visited/compare)
+                        // Canonical key for global dedup
                         matrix_to_matrix_canon(m, dim, c);
 
-                        key128_t seed_can_key; 
+                        key128_t seed_can_key;
                         adjpack_from_matrix(c, dim, &seed_can_key);
+
                         if (g_bucket_insert_copy128(g_canonical_set, &seed_can_key)) {
                             ++local_reps;
-                            buffer_add(&thread_buffer, line);
+                            buffer_add(&thread_buffer, line);   // *** per-wątek buf
                         }
                     } else {
                         ++local_reps;
@@ -306,25 +322,33 @@ int main(int argc, char *argv[]) {
                 }
             }
 
+            // *** Update global count once per batch (after reduction)
             #pragma omp atomic
-                num_of_reps += local_reps;
+            num_of_reps += local_reps;
 
-            free_nauty_data();
+            // *** All threads done computing
+            #pragma omp barrier
 
-            buffer_flush(&thread_buffer);
-            buffer_destroy(&thread_buffer);
+            #pragma omp single
+            {
+                comp_time += omp_get_wtime() - comp_start;
+                line_count = 0;
+            }
+
+            // *** Closure of batch (not always necessary, but keeps things tidy)
+            #pragma omp barrier
         }
-        comp_time += omp_get_wtime() - start;
-        //for (size_t i = 0; i < line_count; ++i) free(lines[i]);
-        line_count = 0; // reset for next batch
-        // curr = buffer;
+
+        free_nauty_data();
+        buffer_flush(&thread_buffer);
+        buffer_destroy(&thread_buffer);
     }
 
     free(lines);
     free(buffer);
 
     double time_end = omp_get_wtime();
-    printlog(2, "Times. Reading: %.3fs. Computations: %.3fs. Ratio: %.4f. Total: %.3fs. Ratio: %.4f", read_time, comp_time, comp_time/(read_time+comp_time), time_end - time_start, comp_time/(time_end - time_start));
+    printlog(1, "Times. Reading: %.3fs. Computations: %.3fs. Ratio: %.4f. Total: %.3fs. Ratio: %.4f", read_time, comp_time, comp_time/(read_time+comp_time), time_end - time_start, comp_time/(time_end - time_start));
     printlog(1, "Done. Found %lu representatives", num_of_reps); //g_bucket_size(g_canonical_set));
 
     if (g_canonical_set) {
