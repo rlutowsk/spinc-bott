@@ -7,7 +7,6 @@ The applications counts the numbers of real Bott manifolds with spinc and spin s
 - OpenMP
 - gcc compiler
 - GNU make
-- glib library
 - xxhash library
 - nauty library with tls support
 
