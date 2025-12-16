@@ -1,43 +1,27 @@
-#ifndef ADJPACK11_H
-#define ADJPACK11_H
+#pragma once
 
 #include <assert.h>
-#include "d6pack11.h"
-#include "bott.h"
 
-#if defined(__GNUC__) || defined(__clang__)
-# define ADJPACK_INLINE __attribute__((always_inline)) inline
-# define ADJPACK_LIKELY(x) __builtin_expect(!!(x), 1)
-# define ADJPACK_UNLIKELY(x) __builtin_expect(!!(x), 0)
-#else
-# define ADJPACK_INLINE inline
-# define ADJPACK_LIKELY(x) (x)
-# define ADJPACK_UNLIKELY(x) (x)
-#endif
-
-#if defined(PROFILE) && defined(ADJPACK_INLINE)
-#  undef ADJPACK_INLINE
-#  define ADJPACK_INLINE __attribute__((noinline))
-#endif
+#include "common.h"
 
 #define ADJPACK_N_BYTE   15u
 #define ADJPACK_N_SHIFT   4u
 #define ADJPACK_N_MASK 0x0Fu
 
-static ADJPACK_INLINE void adjpack_set_n(key128_t *k, unsigned n) {
+static INLINE void adjpack_set_n(key128_t *k, unsigned n) {
     k->b[ADJPACK_N_BYTE] =
         (unsigned char)((k->b[ADJPACK_N_BYTE] & 0x0F) |
         ((n & ADJPACK_N_MASK) << ADJPACK_N_SHIFT));
 }
 
-static ADJPACK_INLINE unsigned adjpack_get_n(const key128_t *k) {
+static INLINE unsigned adjpack_get_n(const key128_t *k) {
     return (unsigned)((k->b[ADJPACK_N_BYTE] >> ADJPACK_N_SHIFT) & ADJPACK_N_MASK);
 }
 
-static ADJPACK_INLINE void adjpack_zero_above_nsquare(key128_t *k, unsigned n) {
+static INLINE void adjpack_zero_above_nsquare(key128_t *k, unsigned n) {
     unsigned L = n * n;
     if (L >= 128) return;
-#if D6PACK_HAVE_UINT128
+#if HAVE_UINT128
 	k->u &= (((__uint128_t)1 << L) - 1);
 #else
     uint64_t lo, hi;
@@ -57,7 +41,7 @@ static ADJPACK_INLINE void adjpack_zero_above_nsquare(key128_t *k, unsigned n) {
 #endif
 }
 
-static ADJPACK_INLINE uint64_t bitreverse64(uint64_t x) {
+static INLINE uint64_t bitreverse64(uint64_t x) {
     // Check if the compiler supports a built-in function for bit reversal.
     // Clang supports this from version 5.
 #if defined(__clang__) && __clang_major__ >= 5
@@ -77,17 +61,17 @@ static ADJPACK_INLINE uint64_t bitreverse64(uint64_t x) {
 #endif
 }
 
-static ADJPACK_INLINE __uint128_t bitreverse128(__uint128_t x) {
+static INLINE __uint128_t bitreverse128(__uint128_t x) {
     uint64_t hi = (uint64_t)(x >> 64);
     uint64_t lo = (uint64_t)x;
-    
+
     return bitreverse64(hi) | ((__uint128_t)bitreverse64(lo) << 64);
 }
 
 // Packs adjacency matrix mat[n] into key128_t (compatible with digraph6)
-static ADJPACK_INLINE void adjpack_from_matrix(const vec_t *mat, unsigned n, key128_t *out) {
+static INLINE void adjpack_from_matrix(const vec_t *mat, unsigned n, key128_t *out) {
     assert(n >= 1 && n <= 11);
-#if D6PACK_HAVE_UINT128
+#if HAVE_UINT128
     out->u = 0;
     uint64_t row;
     for (unsigned i = 0; i < n; ++i) {
@@ -119,9 +103,9 @@ static ADJPACK_INLINE void adjpack_from_matrix(const vec_t *mat, unsigned n, key
 // 10100...0 (64 bits long for us)
 // says that from the vertex there are arrows to the 0th and 2nd vertices.
 // To pack it, it is snough to shift this information by (64-n) places.
-static ADJPACK_INLINE void adjpack_from_graph(const graph *g, unsigned n, int m, key128_t *out) {
+static INLINE void adjpack_from_graph(const graph *g, unsigned n, int m, key128_t *out) {
     assert(n >= 1 && n <= 11);
-#if D6PACK_HAVE_UINT128
+#if HAVE_UINT128
     out->u = 0;
     for (unsigned i = 0; i < n; ++i) {
         set *gi = GRAPHROW(g,i,m);
@@ -137,9 +121,9 @@ static ADJPACK_INLINE void adjpack_from_graph(const graph *g, unsigned n, int m,
 
 
 // Unpacks key128_t into adjacency matrix mat[n]
-static ADJPACK_INLINE void adjpack_to_matrix(const key128_t *k, uint64_t *mat_out, unsigned n) {
+static INLINE void adjpack_to_matrix(const key128_t *k, uint64_t *mat_out, unsigned n) {
     assert(n >= 1 && n <= 11);
-#if D6PACK_HAVE_UINT128
+#if HAVE_UINT128
     __uint128_t acc = k->u;
     for (int i = n-1; i >= 0; --i) {
         mat_out[i] = bitreverse64((uint64_t)acc) >> (64 - n);
@@ -158,5 +142,3 @@ static ADJPACK_INLINE void adjpack_to_matrix(const key128_t *k, uint64_t *mat_ou
     }
 #endif
 }
-
-#endif // ADJPACK11_H

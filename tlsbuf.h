@@ -1,5 +1,4 @@
-#ifndef TLSBUF_H
-#define TLSBUF_H
+#pragma once
 
 #include "common.h"
 
@@ -22,5 +21,3 @@ void buffer_add(OutputBuffer *buffer, char* line);
 void buffer_flush(OutputBuffer *buffer);
 
 void monitor_progress(unsigned long *progress_ptr, unsigned long total, FILE *stream);
-
-#endif /* TLSBUF_H */

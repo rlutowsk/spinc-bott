@@ -10,61 +10,26 @@
 // Reference: Brendan McKay, formats.txt: "&" + N(n) + R(x), R(x) packs row-major n*n bits in 6-bit chunks.
 // https://users.cecs.anu.edu.au/~bdm/data/formats.txt
 
-#ifndef D6PACK11_H
-#define D6PACK11_H
+#pragma once
 
-#include <stdint.h>
-#include <string.h>
-
-#if defined(__GNUC__) || defined(__clang__)
-#  define D6PACK_INLINE __attribute__((always_inline)) inline
-#  define D6PACK_LIKELY(x)   __builtin_expect(!!(x), 1)
-#  define D6PACK_UNLIKELY(x) __builtin_expect(!!(x), 0)
-#else
-#  define D6PACK_INLINE inline
-#  define D6PACK_LIKELY(x)   (x)
-#  define D6PACK_UNLIKELY(x) (x)
-#endif
-
-#if defined(PROFILE) && defined(D6PACK_INLINE)
-#  undef D6PACK_INLINE
-#  define D6PACK_INLINE __attribute__((noinline))
-#endif
-
-#ifndef D6PACK_HAVE_UINT128
-#  if defined(__SIZEOF_INT128__)
-#    define D6PACK_HAVE_UINT128 1
-#  else
-#    define D6PACK_HAVE_UINT128 0
-#  endif
-#endif
-
-#ifndef D6PACK_KEY128_T_DEFINED
-#define D6PACK_KEY128_T_DEFINED 1
-typedef union { 
-    unsigned char b[16];
-#if defined(__SIZEOF_INT128__)
-    __uint128_t   u;
-#endif
-} key128_t;
-#endif
+#include "common.h"
 
 // n nibble location (byte-agnostic, portable)
 #define D6PACK_N_BYTE   15u
 #define D6PACK_N_SHIFT  4u
 #define D6PACK_N_MASK   0x0Fu
 
-static D6PACK_INLINE unsigned d6pack_get_n(const key128_t *k)
+static INLINE unsigned d6pack_get_n(const key128_t *k)
 { return (unsigned)((k->b[D6PACK_N_BYTE] >> D6PACK_N_SHIFT) & D6PACK_N_MASK); }
 
-static D6PACK_INLINE void d6pack_set_n(key128_t *k, unsigned n)
+static INLINE void d6pack_set_n(key128_t *k, unsigned n)
 {
     k->b[D6PACK_N_BYTE] =
         (unsigned char)((k->b[D6PACK_N_BYTE] & 0x0F) | (unsigned char)((n & D6PACK_N_MASK) << D6PACK_N_SHIFT));
 }
 
 // Zero bits above n^2 (keeps n in top nibble); produces canonical key
-static D6PACK_INLINE void d6pack_zero_above_nsquare(key128_t *k, unsigned n)
+static INLINE void d6pack_zero_above_nsquare(key128_t *k, unsigned n)
 {
     unsigned L = n * n;
     if (L >= 128) return; // for n<=11, never happens
@@ -84,20 +49,20 @@ static D6PACK_INLINE void d6pack_zero_above_nsquare(key128_t *k, unsigned n)
     // d6pack_set_n(k, n0 ? n0 : n);
 }
 
-static D6PACK_INLINE unsigned d6pack_expected_len(unsigned n)
+static INLINE unsigned d6pack_expected_len(unsigned n)
 {
     unsigned L = n * n; unsigned groups = (L + 5) / 6;
     return 2u + groups; // '&' + N(n) + groups
 }
 
 // ---- Decode: digraph6 -> key (stores n in top nibble); returns 1/0. ----
-static D6PACK_INLINE int d6pack_decode(const char *d6, key128_t *out, unsigned *out_n)
+static INLINE int d6pack_decode(const char *d6, key128_t *out, unsigned *out_n)
 {
-    if (D6PACK_UNLIKELY(!d6 || !out)) return 0;
+    if (UNLIKELY(!d6 || !out)) return 0;
     const unsigned char *p = (const unsigned char*)d6;
-    if (D6PACK_UNLIKELY(p[0] != '&')) return 0;
-    unsigned c1 = p[1]; if (D6PACK_UNLIKELY(c1 < 63)) return 0;
-    unsigned n = c1 - 63u; if (D6PACK_UNLIKELY(n == 0 || n > 11)) return 0;
+    if (UNLIKELY(p[0] != '&')) return 0;
+    unsigned c1 = p[1]; if (UNLIKELY(c1 < 63)) return 0;
+    unsigned n = c1 - 63u; if (UNLIKELY(n == 0 || n > 11)) return 0;
 
     unsigned L = n * n, groups = (L + 5) / 6, last = L % 6;
     unsigned need = 2 + groups;
@@ -106,7 +71,7 @@ static D6PACK_INLINE int d6pack_decode(const char *d6, key128_t *out, unsigned *
     // ignore the case where the string is longer than needed
     // if (p[need] != 0) return 0; // allow only properly NUL-terminated fixed-length strings
 
-#if D6PACK_HAVE_UINT128
+#if HAVE_UINT128
     __uint128_t acc = 0;
     for (unsigned i=0;i<groups;++i) {
         unsigned v = (unsigned)p[2+i] - 63u; // 0..63
@@ -138,14 +103,14 @@ static D6PACK_INLINE int d6pack_decode(const char *d6, key128_t *out, unsigned *
 }
 
 // ---- Encode from key (uses n stored in nibble). Returns chars without '\0'. ----
-static D6PACK_INLINE unsigned d6pack_encode_from_key(const key128_t *k, char *out_d6)
+static INLINE unsigned d6pack_encode_from_key(const key128_t *k, char *out_d6)
 {
     unsigned n = d6pack_get_n(k);
-    if (D6PACK_UNLIKELY(n < 1 || n > 11)) return 0;
+    if (UNLIKELY(n < 1 || n > 11)) return 0;
     unsigned L = n * n, last = L % 6;
 
     char *q = out_d6; *q++='&'; *q++=(char)(63+n);
-#if D6PACK_HAVE_UINT128
+#if HAVE_UINT128
     uint64_t lo, hi; memcpy(&lo, k->b+0, 8); memcpy(&hi, k->b+8, 8);
     __uint128_t acc = ((__uint128_t)hi << 64) | lo;
     int bitpos = (int)L;
@@ -172,7 +137,7 @@ static D6PACK_INLINE unsigned d6pack_encode_from_key(const key128_t *k, char *ou
 }
 
 // --- Convenience: encode with explicit n (does not modify the input key) ---
-static D6PACK_INLINE unsigned d6pack_encode(const key128_t *k, unsigned n, char *out_d6)
+static INLINE unsigned d6pack_encode(const key128_t *k, unsigned n, char *out_d6)
 {
     key128_t tmp = *k;
     d6pack_zero_above_nsquare(&tmp, n);
@@ -180,14 +145,12 @@ static D6PACK_INLINE unsigned d6pack_encode(const key128_t *k, unsigned n, char 
     return d6pack_encode_from_key(&tmp, out_d6);
 }
 
-// -------------------- key pack/unpack -------------------- 
-static D6PACK_INLINE void d6_to_key128(const char* d6, key128_t* out) {
+// -------------------- key pack/unpack --------------------
+static INLINE void d6_to_key128(const char* d6, key128_t* out) {
     unsigned n;
     d6pack_decode(d6, out, &n);
 }
-static D6PACK_INLINE char* key128_to_d6(const key128_t* k, char *out_d6) {
+static INLINE char* key128_to_d6(const key128_t* k, char *out_d6) {
     d6pack_encode_from_key(k, out_d6);
     return out_d6;
 }
-
-#endif // D6PACK11_H

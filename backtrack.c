@@ -1,17 +1,10 @@
-#include "common.h"
+#include <omp.h>
 
 #include "bott.h"
 #include "dag.h"    /* matrix_to_d6 */
 #include "bucket.h"
 #include "tlsbuf.h"
 
-#include <stdlib.h>
-#include <string.h>
-// #include <unistd.h>
-#include <omp.h>
-// #include <errno.h>
-
-/* --- Pomoc dla CLI --- */
 static void help(const char *name)
 {
     fprintf(stderr,
@@ -41,7 +34,7 @@ struct out_ctx {
 };
 #define OUTBUF_CAP (1u<<26) /* ~64 MiB per task */
 
-static inline void out_flush(struct out_ctx *out)
+static INLINE void out_flush(struct out_ctx *out)
 {
     if (!out || !out->enabled || out->used == 0) return;
     #pragma omp critical(output)
@@ -52,14 +45,11 @@ static inline void out_flush(struct out_ctx *out)
     out->used = 0;
 }
 
-static inline void out_append_line(struct out_ctx *out, const char *line)
+static INLINE void out_append_line(struct out_ctx *out, const char *line)
 {
     if (!out || !out->enabled) return;
-    
-    // char buf[MAXLINE];
+
     key128_t key;
-    // d6_to_d6_canon(line, buf);
-    // d6_to_key128(buf, &key);
     d6_to_key128_canon(line, &key);
     if (!g_bucket_insert_copy128(g_canonical_set, &key)) {
         return;
@@ -75,11 +65,11 @@ static inline void out_append_line(struct out_ctx *out, const char *line)
 }
 
 /* --- Small helpers --- */
-static inline void increase_dimension(vec_t *mat, ind_t dim)
+static INLINE void increase_dimension(vec_t *mat, ind_t dim)
 {
     for (ind_t i = 1; i < dim; ++i) { mat[i] <<= 1; }
 }
-static inline void decrease_dimension(vec_t *mat, ind_t dim)
+static INLINE void decrease_dimension(vec_t *mat, ind_t dim)
 {
     for (ind_t i = 1; i < dim; ++i) { mat[i] >>= 1; }
 }
@@ -119,7 +109,7 @@ int main(int argc, char *argv[])
         case 'p': progress_enabled = 1; break;
         case 'n': no_output = 1; break;
         case 'a': calculate_spin = 1; break;
-        case 'v': verbosity_level++; break;
+        case 'v': increase_verbosity(); break;
         case 'j': nthreads = atoi(optarg); omp_set_num_threads(nthreads); break;
         case 'd': dim  = (ind_t)atoi(optarg); break;
         case 's': sdim = (ind_t)atoi(optarg); break;
@@ -193,7 +183,7 @@ int main(int argc, char *argv[])
     FILE *progress_stream = output_enabled ? stderr : stdout;
     FILE *summary_stream  = (output_enabled ? stderr : stdout);
 
-    g_canonical_set = g_bucket_new_128( NULL, NULL, 1023 );
+    g_canonical_set = g_bucket_new_128( NULL, 1023 );
     if (g_canonical_set==NULL) {
         fprintf(stderr, "error in creating GHashBucket, quitting...\n");
         exit(1);

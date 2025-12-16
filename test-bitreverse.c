@@ -1,15 +1,16 @@
-#include "common.h"
-#include "adjpack11.h"
 #include <inttypes.h>
 
+#include "adjpack11.h"
+#include "bott.h"
+
 #if defined(__clang__) && __clang_major__ >= 5
-static ADJPACK_INLINE uint64_t bitreverse64_legacy(uint64_t x) {
+static INLINE uint64_t bitreverse64_legacy(uint64_t x) {
     // Check if the compiler supports a built-in function for bit reversal.
     // Clang supports this from version 5.
     return __builtin_bitreverse64(x);
 }
 #else
-static ADJPACK_INLINE uint64_t bitreverse64_legacy(uint64_t x) {
+static INLINE uint64_t bitreverse64_legacy(uint64_t x) {
     // Portable, and very efficient implementation as a fallback.
     x = ((x & 0x5555555555555555ULL) <<  1) | ((x >>  1) & 0x5555555555555555ULL);
     x = ((x & 0x3333333333333333ULL) <<  2) | ((x >>  2) & 0x3333333333333333ULL);
@@ -21,7 +22,7 @@ static ADJPACK_INLINE uint64_t bitreverse64_legacy(uint64_t x) {
 }
 #endif
 
-static ADJPACK_INLINE __uint128_t bitreverse128_native(__uint128_t x) {
+static INLINE __uint128_t bitreverse128_native(__uint128_t x) {
 #if defined(__clang__) && __clang_major__ >= 18
     return (((__uint128_t)__builtin_bitreverse64((uint64_t)x))<<64) | (__uint128_t)__builtin_bitreverse64((uint64_t)(x >> 64));
 #else
@@ -48,11 +49,11 @@ static ADJPACK_INLINE __uint128_t bitreverse128_native(__uint128_t x) {
 #endif
 }
 
-static ADJPACK_INLINE __uint128_t bitreverse128_legacy(__uint128_t x) {
+static INLINE __uint128_t bitreverse128_legacy(__uint128_t x) {
     // Portable, and very efficient implementation as a fallback.
     uint64_t hi = (uint64_t)(x >> 64);
     uint64_t lo = (uint64_t)x;
-    
+
     return bitreverse64(hi) | ((__uint128_t)bitreverse64(lo) << 64);
 }
 
@@ -134,7 +135,7 @@ void benchmark128() {
     volatile __uint128_t sum = 0;
     clock_t start, end;
 
-    // Rozgrzewka
+    // warm up
     for (int i = 0; i < N; ++i) {
         __uint128_t x = ((__uint128_t)i << 64) | (N - i);
         sum += bitreverse128_native(x);

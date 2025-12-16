@@ -1,8 +1,9 @@
-#ifndef DAG_H
-#define DAG_H
+#pragma once
 
 #include <nauty.h>
 #include <gtools.h>
+#include <stdbool.h>
+
 #include "d6pack11.h"
 
 /**
@@ -23,7 +24,6 @@
 void init_nauty_data(int n);
 void free_nauty_data(void);
 
-#include "bott.h"
 /**
  * @brief Converts a binary matrix to a digraph6 (d6) string representation.
  *
@@ -65,7 +65,7 @@ char* matrix_to_d6(const vec_t *mat, int dim, char *dag_gcode);
 int matrix_from_d6(char *s, vec_t *mat, ind_t dim);
 /**
  * @brief Converts an adjacency matrix to its canonical digraph6 (d6) representation.
- * 
+ *
  * Converts a given adjacency matrix representation of a directed graph (DAG) into
  * D6 string representation of its canonical form.
  *
@@ -93,5 +93,3 @@ int matrix_from_graph(graph *g, vec_t *mat);
 int matrix_to_graph(graph *g, const vec_t *mat);
 
 graph *get_dag_g(void);
-
-#endif // DAG_H

@@ -1,4 +1,3 @@
-#include "common.h"
 #include "dag.h"
 #include "bott.h"
 #include "adjpack11.h"

@@ -1,10 +1,10 @@
-#include "common.h"
 #include "adjpack11.h"
 #include "bucket.h"
+#include "bott.h"
 
-static ADJPACK_INLINE void adjpack_from_matrix_legacy(const vec_t *mat, unsigned n, key128_t *out) {
+static INLINE void adjpack_from_matrix_legacy(const vec_t *mat, unsigned n, key128_t *out) {
     assert(n >= 1 && n <= 11);
-#if D6PACK_HAVE_UINT128
+#if HAVE_UINT128
 	out->u = 0;
     uint64_t row;
     for (unsigned i = 0; i < n; ++i) {
@@ -32,9 +32,9 @@ static ADJPACK_INLINE void adjpack_from_matrix_legacy(const vec_t *mat, unsigned
     adjpack_set_n(out, n);
 }
 
-static ADJPACK_INLINE void adjpack_from_matrix_native(const vec_t *mat, unsigned n, key128_t *out) {
+static INLINE void adjpack_from_matrix_native(const vec_t *mat, unsigned n, key128_t *out) {
     assert(n >= 1 && n <= 11);
-#if D6PACK_HAVE_UINT128
+#if HAVE_UINT128
     // __uint128_t row = 0;
     out->u = 0;
     unsigned j = 0;
@@ -63,17 +63,16 @@ static ADJPACK_INLINE void adjpack_from_matrix_native(const vec_t *mat, unsigned
 }
 
 bool test_correctness() {
-    // printf("Testing correctness of adjpack_from_matrix vs adjpack_from_matrix_legacy...\n");
 
     for (unsigned dim = 1; dim <= 11; ++dim) {
         vec_t *mat = init(dim);
         bool all_passed = true;
 
-        // Test dla kilku przykładowych macierzy
+        // Test for few example matrices
         for (unsigned i = 0; i < 100; ++i) {
             for (unsigned r = 0; r < dim; ++r) {
-                mat[r] = i ^ (r * 0xA5A5A5A5A5A5A5A5ULL); // przykładowe dane
-                mat[r] &= ((1ULL << dim) - 1); // ograniczenie do dim bitów
+                mat[r] = i ^ (r * 0xA5A5A5A5A5A5A5A5ULL); // example data
+                mat[r] &= ((1ULL << dim) - 1); // limit to dim bits
             }
 
             key128_t a, b;
@@ -109,7 +108,7 @@ void benchmark(bool verbose) {
     vec_t *mat = init(dim);
     volatile key128_t out;
 
-    // Wypełnij przykładową macierz
+    // fill matrix with some data
     for (unsigned r = 0; r < dim; ++r)
         mat[r] = (r * 0x123456789ABCDEFULL) & ((1ULL << dim) - 1);
 

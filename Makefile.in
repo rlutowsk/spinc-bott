@@ -9,11 +9,14 @@ LDFLAGS ?=
 LDFLAGS += @BUILD_MODE_LDFLAGS@
 
 # -- Sources and targets ---
-OPENMP_SRC := mats.c backtrack.c minimalf.c uniqueg.c orientedg.c
+COMMON_SRC := mats.c backtrack.c orientedf.c orientedg.c upperg.c upperf.c canonicalg.c uniqueg.c spinf.c spincf.c orbitg.c minimalf.c
+
+OPENMP_SRC := $(COMMON_SRC)
+OPENMP_SRC += $(wildcard test-*.c)
 OPENMP_APP := $(patsubst %.c, %, $(OPENMP_SRC))
 OPENMP_OBJ := tlsbuf.o
 
-NAUTY_SRC := mats.c backtrack.c orientedf.c orientedg.c upperg.c upperf.c canonicalg.c uniqueg.c spinf.c spincf.c orbitg.c minimalf.c
+NAUTY_SRC := $(COMMON_SRC)
 NAUTY_SRC += $(wildcard test-*.c)
 NAUTY_APP := $(patsubst %.c, %, $(NAUTY_SRC))
 NAUTY_OBJ := dag.o bucket.o
@@ -23,7 +26,9 @@ OBJ  := bott.o common.o
 LIB  := gap.so
 LOBJ := $(patsubst %.o, %.lo, $(OBJ))
 
-TARGETS := $(APP) $(LIB)
+TARGETS := $(APP)
+
+# TARGETS += $(LIB)
 
 # --- list of object files for application targets ---
 APP_OBJ := $(APP:%=%.o)
@@ -44,11 +49,11 @@ $(OPENMP_APP): LDFLAGS += @OPENMP_CFLAGS@
 $(OPENMP_APP): OBJ     += $(OPENMP_OBJ)
 
 # The following rules configure the build for the $(NAUTY_APP) target:
-# - CFLAGS are extended with compiler flags for Nauty, GLib, and XXHash libraries.
-# - LDFLAGS are extended with runtime path and linker flags for Nauty, GLib, and XXHash libraries.
+# - CFLAGS are extended with compiler flags for Nauty and XXHash libraries.
+# - LDFLAGS are extended with runtime path and linker flags for Nauty and XXHash libraries.
 # - OBJ specifies the object files required to build $(NAUTY_APP).
-$(NAUTY_APP): CFLAGS  += @NAUTY_CFLAGS@ @GLIB_CFLAGS@ @XXHASH_CFLAGS@
-$(NAUTY_APP): LDFLAGS += @RPATH@ @NAUTY_LIBS@ @GLIB_LIBS@ @XXHASH_LIBS@
+$(NAUTY_APP): CFLAGS  += @NAUTY_CFLAGS@ @XXHASH_CFLAGS@
+$(NAUTY_APP): LDFLAGS += @RPATH@ @NAUTY_LIBS@ @XXHASH_LIBS@
 $(NAUTY_APP): OBJ     += $(NAUTY_OBJ)
 
 # The following rule appends additional compiler flags (@APP_CFLAGS@) to all application targets in $(APP).
@@ -87,7 +92,7 @@ $(APP): %: %.o $$(OBJ)
 	$(GAC) -o $@ $< -c -p "$(CFLAGS)"
 
 # Add Nauty and GLib flags for building the shared library
-%.so: CFLAGS += @NAUTY_CFLAGS@ @GLIB_CFLAGS@
+%.so: CFLAGS += @NAUTY_CFLAGS@
 # Build the shared library (.so) from .c source and .lo objects using GAC
 %.so: %.c $(LOBJ)
 	$(GAC) -d $< -o $@ -p "$(CFLAGS)" -L "$(LOBJ) $(LDFLAGS)"
@@ -121,7 +126,7 @@ distclean: clean
 	@rm -f $(wildcard test.d6)
 
 # -- make test.d6 file - the default for testing apps --
-test-data:
+test.d6:
 	@geng 4 | directg -a >  test.d6
 	@geng 5 | directg -a >> test.d6
 	@geng 6 | directg -a >> test.d6
@@ -130,3 +135,6 @@ test-data:
 	@geng 9  9:11 | directg -a >> test.d6
 	@geng 10 9:11 | directg -a >> test.d6
 	@geng 11 9:11 | directg -a >> test.d6
+
+test: test.d6 testall.sh $(APP)
+	@./testall.sh

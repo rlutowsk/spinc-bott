@@ -1,12 +1,10 @@
-#include "common.h"
+#include <omp.h>
+
 #include "dag.h"
 #include "bucket.h"
 #include "adjpack11.h"
 #include "parse_scaled.h"
-#include "common.h"
 #include "tlsbuf.h"
-
-#include <omp.h>
 
 void help(const char *progname) {
     if (progname == NULL) progname = "uniqueg";
@@ -32,10 +30,9 @@ int main(int argc, char *argv[]) {
     // always zero the timer at start of main
     tic();
     // default settings
-    size_t lines_capacity = 100000; 
+    size_t lines_capacity = 100000;
     int num_shards = 256;
     int num_threads = omp_get_max_threads(); // default max threads
-    int v = 0;
     bool canon = false;
 
     FILE *in = stdin, *out = stdout;
@@ -44,7 +41,7 @@ int main(int argc, char *argv[]) {
     while ((opt = getopt(argc, argv, "l:n:j:vi:o:c")) != -1) {
         switch (opt) {
         case 'v':
-            ++v;
+            increase_verbosity();
             break;
         case 'j':
             num_threads = (ind_t)atoi(optarg);
@@ -87,8 +84,6 @@ int main(int argc, char *argv[]) {
     }
 
     // variables
-    verbosity_level = v;
-
     size_t line_count = 0;
     char buffer[MAXLINE];
 
@@ -113,7 +108,7 @@ int main(int argc, char *argv[]) {
     assert(dim > 0 && dim <= 11);
 
     // Global dedup across orbits by CANONICAL key
-    GHashBucket *g_canonical_set =g_bucket_new_128(g_free, NULL, num_shards);
+    GHashBucket *g_canonical_set =g_bucket_new_128(free, num_shards);
 
     size_t batch_num = 0;
     size_t num_of_reps = 0;
@@ -157,7 +152,7 @@ int main(int argc, char *argv[]) {
                     buffer_add(&thread_buffer, line);
                 }
             }
-            
+
             #pragma omp atomic
                 num_of_reps += local_reps;
 

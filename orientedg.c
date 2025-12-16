@@ -1,4 +1,4 @@
-#include "common.h"
+#include <omp.h>
 
 #include "bott.h"
 #include "dag.h"    /* matrix_to_d6 */
@@ -6,13 +6,6 @@
 #include "bucket.h"
 #include "tlsbuf.h"
 
-#include <stdlib.h>
-#include <string.h>
-// #include <unistd.h>
-#include <omp.h>
-// #include <errno.h>
-
-/* --- Pomoc dla CLI --- */
 static void help(const char *name)
 {
     fprintf(stderr,
@@ -35,7 +28,7 @@ struct out_ctx {
 };
 #define OUTBUF_CAP (1u<<20) /* ~1 MiB per task */
 
-static inline void out_flush(struct out_ctx *out)
+static INLINE void out_flush(struct out_ctx *out)
 {
     if (!out || !out->enabled || out->used == 0) return;
     #pragma omp critical(output)
@@ -46,7 +39,7 @@ static inline void out_flush(struct out_ctx *out)
     out->used = 0;
 }
 
-static inline void out_append_line(struct out_ctx *out, const char *line)
+static INLINE void out_append_line(struct out_ctx *out, const char *line)
 {
     if (!out || !out->enabled) return;
     size_t len = strlen(line);
@@ -77,7 +70,7 @@ int main(int argc, char *argv[])
     while ((opt = getopt(argc, argv, "vhj:d:po:")) != -1) {
         switch (opt) {
         case 'p': progress_enabled = 1; break;
-        case 'v': verbosity_level++; break;
+        case 'v': increase_verbosity(); break;
         case 'j': omp_set_num_threads(atoi(optarg)); break;
         case 'd': dim  = (ind_t)atoi(optarg); break;
         case 'o': out_path = optarg; break;
@@ -120,7 +113,7 @@ int main(int argc, char *argv[])
 
     FILE *progress_stream = stderr;
 
-    GHashBucket *g_canonical_set = g_bucket_new_128(NULL, NULL, 1023);
+    GHashBucket *g_canonical_set = g_bucket_new_128(NULL, 1023);
 
     printlog(1, "starting calculations");
     /* ------------------ Parallelism (tasks) ------------------ */
@@ -160,7 +153,7 @@ int main(int argc, char *argv[])
                         fprintf(stderr, "malloc failed for output buffer\n");
                         exit(EXIT_FAILURE);
                     }
-                    
+
                     init_nauty_data(dim);
                     for (state_t s = (state_t)base; s <= (state_t)end; ++s) {
                         matrix_by_state(mat, cache, s, dim);
@@ -183,7 +176,7 @@ int main(int argc, char *argv[])
                     unsigned long done = (unsigned long)(end - base + 1);
                     #pragma omp atomic update
                         progress += done;
-                    
+
                     free(mat);
                     free(can);
                 }

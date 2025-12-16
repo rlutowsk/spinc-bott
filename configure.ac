@@ -66,11 +66,6 @@ PKG_CHECK_MODULES([NAUTY], [libnauty >= 2.9.1],
                   [AC_SUBST(NAUTY_LIBS)],
                   [AC_MSG_ERROR([nauty 2.9.1 or newer is required.])])
 
-PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.32],
-                  [AC_SUBST(GLIB_CFLAGS)]
-                  [AC_SUBST(GLIB_LIBS)],
-                  [AC_MSG_ERROR([GLib 2.32 or newer is required.])])
-
 PKG_CHECK_MODULES([XXHASH], [libxxhash >= 0.8.1],
                   [AC_SUBST(XXHASH_CFLAGS)]
                   [AC_SUBST(XXHASH_LIBS)],
