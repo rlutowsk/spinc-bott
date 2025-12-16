@@ -1,19 +1,13 @@
 #pragma once
+
 #include <ctype.h>
-#include <errno.h>
-#include <limits.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 
 /* Parses decimal with optional suffix:
    - K/M/G/T/P/E   => *1000, *1000^2, ...
    - Ki/Mi/Gi/...  => *1024, *1024^2, ...
    Optional trailing 'B'/'b' is accepted (e.g., "2MiB").
    Returns true on success; false on invalid input or overflow. */
-static inline bool parse_scaled_size(const char *s, size_t *out)
+static INLINE bool parse_scaled_size(const char *s, size_t *out)
 {
     if (!s || !*s || !out) return false;
 
@@ -28,7 +22,7 @@ static inline bool parse_scaled_size(const char *s, size_t *out)
     unsigned long long mult = 1ULL;
 
     if (*end) {
-        char c1 = (char)toupper((unsigned char)*end);
+        char c1 = (char)toupper((unsigned char)*end); 
         char c2 = (char)toupper((unsigned char)*(end + 1));
         const char *p = end;
 
@@ -75,7 +69,7 @@ static inline bool parse_scaled_size(const char *s, size_t *out)
     }
 
     // Overflow‑safe multiply into size_t
-#if defined(__SIZEOF_INT128__)
+#if HAVE_UINT128
     __uint128_t prod = ((__uint128_t)base) * ((__uint128_t)mult);
     if (prod > ( __uint128_t)SIZE_MAX) return false;
     *out = (size_t)prod;

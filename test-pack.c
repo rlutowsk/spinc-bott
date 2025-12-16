@@ -1,7 +1,6 @@
-#include "common.h"
 #include "dag.h"
 #include "adjpack11.h"
-#include "d6pack11.h"  // for d6pack_decode
+#include "d6pack11.h"
 
 void print_key_bits(const key128_t *k, const char *label) {
     printf("%s: ", label);

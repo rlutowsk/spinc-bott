@@ -1,4 +1,3 @@
-#include "common.h"
 #include "bott.h"
 #include "dag.h"
 #include "bucket.h"
@@ -13,7 +12,7 @@ int main(void)
 
     state_t max_state = get_max_state(dim);
 
-    GHashBucket *code_set = g_bucket_new_128(NULL, NULL, 1023);
+    GHashBucket *code_set = g_bucket_new_128(NULL, 1023);
 
     vec_t *mat = init(dim);
     key128_t k;

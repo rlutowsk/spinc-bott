@@ -1,11 +1,8 @@
-#ifndef BOTT_H
-#define BOTT_H
+#pragma once
 
 #include "common.h"
 
-#include <stdlib.h>
 #include <stdbool.h>
-#include <stdint.h>
 
 /* ensure we are in 64-bit environment */
 #include <bits/wordsize.h>
@@ -16,13 +13,6 @@
 #ifndef SWAP
     #define SWAP(T, a, b) do { T SWAP_TMP = a; a = b; b = SWAP_TMP; } while (0)
 #endif
-
-#define C(row,dim,j) ((row>>(j))&1)
-
-
-typedef uint8_t  ind_t;
-typedef uint64_t state_t;
-typedef uint64_t vec_t;
 
 static INLINE int scalar_product(vec_t a, vec_t b)
 {
@@ -55,7 +45,7 @@ static INLINE void matrix_by_state(vec_t *mat, const vec_t *cache, const state_t
     }
 }
 
-static inline bool is_upper_triangular(const vec_t *mat, const ind_t dim)
+static INLINE bool is_upper_triangular(const vec_t *mat, const ind_t dim)
 {
     vec_t row_mask = 1;
     for (ind_t i=1; i<dim; ++i) {
@@ -70,13 +60,9 @@ static inline bool is_upper_triangular(const vec_t *mat, const ind_t dim)
 /* main workers of this app */
 bool is_spinc(const vec_t *mat, const ind_t dim);
 
-static inline int row_sum(vec_t r)
+static INLINE int row_sum(vec_t r)
 {
-#if VEC_T_SIZE == 64
     return __builtin_popcountl(r);
-#else
-    return __builtin_popcount(r);
-#endif
 }
 
 static INLINE bool is_orientable(const vec_t *mat, const ind_t dim)
@@ -100,17 +86,3 @@ void conditional_add_col(const vec_t *src, vec_t *dst, ind_t dim, ind_t k);
 bool conditional_add_row(const vec_t *src, vec_t *dst, ind_t dim, ind_t l, ind_t m);
 
 int matrix_weight(const vec_t *mat, const ind_t dim);
-
-/* to delete - not needed anymore */
-
-extern const ind_t mat_characters[];
-
-void encode_matrix(const vec_t *mat, const ind_t dim, char *buffer);
-
-void decode_matrix(vec_t *mat, const ind_t dim, const char *buffer);
-
-char* matrix_to_digraph6(const vec_t *mat, int dim);
-
-int digraph6_to_matrix(const char *digraph6_str, vec_t *matrix, int n);
-
-#endif /* BOTT_H */

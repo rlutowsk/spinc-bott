@@ -1,4 +1,3 @@
-#include "common.h"
 #include "bott.h"
 #include "dag.h"
 #include "bucket.h"
@@ -78,9 +77,8 @@ int main(void)
         0x22, //00100010
         0xe2, //11100010
         0x42, //01000010
-        0x82  //10000010 
+        0x82  //10000010
     };
-    
 
     vec_t *cache = NULL;
     size_t cache_size = 0;
@@ -99,6 +97,6 @@ int main(void)
     free(cache);
 
     printf("=== [bott-populate_cache] all tests passed ===\n");
-    
+
     return 0;
 }

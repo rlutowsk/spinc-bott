@@ -1,4 +1,6 @@
-#include "common.h"
+#include <omp.h>
+
+// #include "common.h"
 #include "bott.h"
 #include "dag.h"
 #include "bucket.h"
@@ -70,15 +72,8 @@ void help(const char *name)
  * @param aux   Auxiliary matrix stores temporary output of the calculations.
  * @return void
  */
-static inline void add_code(GHashBucket *b, MatArray *q, vec_t *aux)
+static INLINE void add_code(GHashBucket *b, MatArray *q, vec_t *aux)
 {
-    /* 
-    char d6buf[MAXLINE];
-
-    matrix_to_d6_canon(aux, dim, d6buf);
-    key128_t k; d6_to_key128(d6buf, &k);
-    */
-    // /*
     vec_t out[dim];
     matrix_to_matrix_canon(aux, dim, out);
     key128_t k; adjpack_from_matrix(out, dim, &k);
@@ -119,7 +114,7 @@ static char* populate_orbit(GHashBucket *bucket, char *code)
 
     matarray_append(q, aux);
 
-    for (guint h=0; h < q->len; ++h) {
+    for (size_t h=0; h < q->len; ++h) {
         vec_t *cur;
 
         for (ind_t i=0; i<dim; ++i) {
@@ -146,19 +141,19 @@ static char* populate_orbit(GHashBucket *bucket, char *code)
 }
 
 typedef struct {
-    GHashBucket *bucket;
-    gboolean    run;
-    gulong      time;
-    gulong      lines;
-    gulong      reps;
+    GHashBucket*  bucket;
+    bool          run;
+    unsigned long time;
+    unsigned long lines;
+    unsigned long reps;
 } GBucketThreadData;
 
-gpointer print_code_set_size(gpointer thread_data)
+void *print_code_set_size(void *thread_data)
 {
     GBucketThreadData *data = (GBucketThreadData*)thread_data;
     while (data->run) {
         printlog(2, "lines: %.2fM; reps: %.2fM; bucket: %.2fM", data->lines/1000000.0, data->reps/1000000.0, g_bucket_size(data->bucket)/1000000.0);
-        g_usleep(data->time);
+        usleep(data->time);
     }
     return NULL;
 }
@@ -169,25 +164,26 @@ int main(int argc, char *argv[])
 
     int opt = 1, v = 0;
 
-    gulong t = 1;
-    gsize  n = 1023;
-    gsize  m = 0;
+    unsigned long t = 1;
+    size_t  n = 1023;
+    size_t  m = 0;
 
     FILE *in = stdin, *out = stdout;
 
     while ((opt = getopt(argc, argv, "vhn:i:o:t:m:")) != -1) {
         switch (opt) {
         case 'v':
-            ++v;
+            //++v;
+            increase_verbosity();
             break;
         case 'n':
             n = (ind_t)atoi(optarg);
             break;
         case 't':
-            t = (gulong)atoi(optarg);
+            t = (unsigned long)atoi(optarg);
             break;
         case 'm':
-            m = (gsize)atoi(optarg);
+            m = (size_t)atoi(optarg);
             break;
         case 'i':
             in = fopen(optarg, "r");
@@ -212,8 +208,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    verbosity_level = v;
-
     char line[MAXLINE];
     if ( fgets(line, MAXLINE, in)==NULL ) {
         fprintf(stderr, "error reading input\n");
@@ -235,8 +229,7 @@ int main(int argc, char *argv[])
 
     // create a hash table bucket
     GHashBucket* code_set = g_bucket_new_128(
-        g_free,        // Function to free the key when the bucket is destroyed
-        NULL,          // Function to free the value (not needed for simple booleans)
+        free,        // Function to free the key when the bucket is destroyed
         n
     );
     g_bucket_reserve(code_set, m*1000000ULL);
@@ -245,35 +238,41 @@ int main(int argc, char *argv[])
     fprintf(out, "%s\n", d6);
 
     GBucketThreadData thread_data = { code_set, TRUE, t*1000000, 1, 1 };
-    GThread *print_thread;
-    if (v>=2) {
-        print_thread = g_thread_new(NULL, print_code_set_size, &thread_data);
-    }
 
-    while (fgets(line, MAXLINE, in) != NULL) {
-        ++thread_data.lines;
-        /* transform to canonical form */
-        d6_to_d6_canon(line, d6);
-        key128_t repkey;
-        d6_to_key128(d6, &repkey);
-        // try to delete; if succesful, then continue
-        if ( g_bucket_remove(code_set, &repkey) ) {
-            continue;
+    omp_set_num_threads(2);
+
+    #pragma omp parallel
+    {
+
+        #pragma omp single nowait
+        {
+            if (v>=2) print_code_set_size(&thread_data);
         }
-        // save the code
-        // line[strlen(line)-1] = 0;
-        fprintf(out, "%s\n", d6);
-        ++thread_data.reps;
-        // populate orbit
-        populate_orbit(code_set, d6);
+        #pragma omp master
+        {
+            while (fgets(line, MAXLINE, in) != NULL) {
+                ++thread_data.lines;
+                /* transform to canonical form */
+                d6_to_d6_canon(line, d6);
+                key128_t repkey;
+                d6_to_key128(d6, &repkey);
+                // try to delete; if succesful, then continue
+                if ( g_bucket_remove(code_set, &repkey) ) {
+                    continue;
+                }
+                // save the code
+                // line[strlen(line)-1] = 0;
+                fprintf(out, "%s\n", d6);
+                ++thread_data.reps;
+                // populate orbit
+                populate_orbit(code_set, d6);
+            }
+        }
+        thread_data.run = false;
+        #pragma omp barrier
     }
 
     printlog(1, "%u representatives found", thread_data.reps);
-
-    if (v>=2) {
-        thread_data.run = FALSE;
-        g_thread_join( print_thread );
-    }
 
     free_nauty_data();
 

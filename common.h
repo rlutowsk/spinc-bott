@@ -1,9 +1,8 @@
-#ifndef COMMON_H
-#define COMMON_H
+#pragma once
 
 #define _GNU_SOURCE
 #include <time.h>
-#include <stdio.h>
+#include <stdarg.h>
 #include <stdint.h>
 
 #include "config.h"
@@ -28,10 +27,30 @@
 #ifndef HAVE_UINT128
 #   if defined(__SIZEOF_INT128__)
 #       define HAVE_UINT128 1
+        typedef __uint128_t uint128_t;
 #   else
 #       define HAVE_UINT128 0
 #   endif
 #endif
+
+#ifndef KEY128_T_DEFINED
+#define KEY128_T_DEFINED 1
+    typedef union {
+        unsigned char b[16];
+        #if HAVE_UINT128
+            uint128_t   u;
+        #endif
+    } key128_t;
+#endif
+
+typedef uint8_t  ind_t;
+typedef uint64_t state_t;
+typedef uint64_t vec_t;
+
+static INLINE vec_t C(vec_t row, ind_t j)
+{
+    return (row>>j)&1;
+}
 
 /*
  * set the default line length
@@ -73,7 +92,7 @@ static INLINE uint64_t ns_now_monotonic(void) {
     const clockid_t cid = CLOCK_MONOTONIC_RAW;
 #else
     const clockid_t cid = CLOCK_MONOTONIC;
-#endif    
+#endif
     if (clock_gettime(cid, &ts) != 0) {
             return 0;
     }
@@ -88,9 +107,6 @@ static INLINE float toc_sec(void)
     return toc()/1000000000.0;
 }
 
-extern unsigned int verbosity_level;
-
-#include <stdarg.h>
 void printlog(unsigned int v, const char *format, ...);
 
 void increase_verbosity(void);
@@ -99,5 +115,3 @@ static INLINE void remove_newline(char *s)
 {
     s[strcspn(s, "\r\n")] = 0;
 }
-
-#endif

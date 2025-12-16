@@ -1,4 +1,4 @@
-#include "common.h"
+#include "bott.h"
 #include "dag.h"
 #include "adjpack11.h"
 

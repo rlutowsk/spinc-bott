@@ -664,8 +664,6 @@ build
 OPENMP_CFLAGS
 XXHASH_LIBS
 XXHASH_CFLAGS
-GLIB_LIBS
-GLIB_CFLAGS
 NAUTY_LIBS
 NAUTY_CFLAGS
 RPATH
@@ -752,8 +750,6 @@ PKG_CONFIG_PATH
 PKG_CONFIG_LIBDIR
 NAUTY_CFLAGS
 NAUTY_LIBS
-GLIB_CFLAGS
-GLIB_LIBS
 XXHASH_CFLAGS
 XXHASH_LIBS'
 
@@ -1414,8 +1410,6 @@ Some influential environment variables:
   NAUTY_CFLAGS
               C compiler flags for NAUTY, overriding pkg-config
   NAUTY_LIBS  linker flags for NAUTY, overriding pkg-config
-  GLIB_CFLAGS C compiler flags for GLIB, overriding pkg-config
-  GLIB_LIBS   linker flags for GLIB, overriding pkg-config
   XXHASH_CFLAGS
               C compiler flags for XXHASH, overriding pkg-config
   XXHASH_LIBS linker flags for XXHASH, overriding pkg-config
@@ -4757,78 +4751,10 @@ printf "%s\n" "yes" >&6; }
 
 fi
 
-
-pkg_failed=no
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for glib-2.0 >= 2.32" >&5
-printf %s "checking for glib-2.0 >= 2.32... " >&6; }
-
-if test -n "$GLIB_CFLAGS"; then
-    pkg_cv_GLIB_CFLAGS="$GLIB_CFLAGS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"glib-2.0 >= 2.32\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "glib-2.0 >= 2.32") 2>&5
-  ac_status=$?
-  printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_GLIB_CFLAGS=`$PKG_CONFIG --cflags "glib-2.0 >= 2.32" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
-fi
- else
-    pkg_failed=untried
-fi
-if test -n "$GLIB_LIBS"; then
-    pkg_cv_GLIB_LIBS="$GLIB_LIBS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"glib-2.0 >= 2.32\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "glib-2.0 >= 2.32") 2>&5
-  ac_status=$?
-  printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_GLIB_LIBS=`$PKG_CONFIG --libs "glib-2.0 >= 2.32" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
-fi
- else
-    pkg_failed=untried
-fi
-
-
-
-if test $pkg_failed = yes; then
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-
-if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-        _pkg_short_errors_supported=yes
-else
-        _pkg_short_errors_supported=no
-fi
-        if test $_pkg_short_errors_supported = yes; then
-                GLIB_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "glib-2.0 >= 2.32" 2>&1`
-        else
-                GLIB_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "glib-2.0 >= 2.32" 2>&1`
-        fi
-        # Put the nasty error message in config.log where it belongs
-        echo "$GLIB_PKG_ERRORS" >&5
-
-        as_fn_error $? "GLib 2.32 or newer is required." "$LINENO" 5
-elif test $pkg_failed = untried; then
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-        as_fn_error $? "GLib 2.32 or newer is required." "$LINENO" 5
-else
-        GLIB_CFLAGS=$pkg_cv_GLIB_CFLAGS
-        GLIB_LIBS=$pkg_cv_GLIB_LIBS
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-
-
-fi
+#PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.32],
+#                  [AC_SUBST(GLIB_CFLAGS)]
+#                  [AC_SUBST(GLIB_LIBS)],
+#                  [AC_MSG_ERROR([GLib 2.32 or newer is required.])])
 
 
 pkg_failed=no

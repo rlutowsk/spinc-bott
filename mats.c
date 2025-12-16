@@ -1,7 +1,7 @@
-#include "common.h"
+#include <omp.h>
+
 #include "bott.h"
 #include "dag.h"
-#include <omp.h>
 
 void help(const char *name)
 {

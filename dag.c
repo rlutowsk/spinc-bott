@@ -1,9 +1,10 @@
 #include "dag.h"
 #include "adjpack11.h"
-#include "d6pack11.h"
 
+/*
+ * Check at compile time if everything is as expected.
+ */
 _Static_assert(sizeof(vec_t) == sizeof(setword), "vec_t and setword types must match for memcpy optimization");
-// check at compile time if everything is as expected
 _Static_assert(sizeof(vec_t) == 8, "vec_t must be a 64-bit type.");
 _Static_assert(sizeof(set)   == 8, "nauty's set type must be 64-bit.");
 
@@ -94,8 +95,8 @@ char* matrix_to_d6(const vec_t *mat, int dim, char *dag_gcode)
         for (i = 0; i < n; ++i)
         {
             x <<= 1;
-            // if (C(mat[j], n, i)) x |= 1;
-            x |= C(mat[j], n, i);
+            // if (C(mat[j], i)) x |= 1;
+            x |= C(mat[j], i);
             if (--k == 0)
             {
                 *p++ = (char)(BIAS6 + x);
@@ -123,62 +124,13 @@ int matrix_from_d6(char *s, vec_t * __restrict mat, ind_t dim)
 }
 
 /*
-#include <string.h>
-#include <stdint.h>
-
-// Założenia jak u Ciebie:
-// - graphsize(), SIZELEN(n)
-// - BIAS6 (63), TOPBIT6 (0x20)
-// - typy: vec_t (np. uint64_t) i ind_t
-
-int matrix_from_d6(char *s, vec_t * __restrict mat, ind_t dim)
-{
-    if (!s || s[0] != '&') return -1;
-
-    const int n = graphsize(s);
-    if (n <= 0 || (ind_t)n > dim) return -1;
-
-    // Zerowanie tylko potrzebnej części (lub całego dim – jak wolisz)
-    memset(mat, 0, (size_t)dim * sizeof(vec_t));
-
-    const unsigned char *p = (const unsigned char*)s + 1 + SIZELEN(n);
-
-    // Globalny, ciągły strumień bitów: k = ile bitów pozostało w x (0..6)
-    unsigned k = 0;
-    unsigned x = 0;
-
-    for (int i = 0; i < n; ++i) {
-        vec_t row  = 0;
-        vec_t mask = 1;
-
-        for (int j = 0; j < n; ++j) {
-            if (k == 0) {                 // doładuj kolejne 6 bitów
-                x = (unsigned)(*p++) - (unsigned)BIAS6;
-                k = 6;
-            }
-            if (x & TOPBIT6) row |= mask; // testuj MSB (bit5), jak w Twoim kodzie
-            x <<= 1;                       // przejdź do kolejnego bitu: bit4 -> bit5 ...
-            --k;                           // jeden bit mniej do wykorzystania
-            mask <<= 1;                    // następna kolumna w wierszu
-        }
-        mat[i] = row;                      // jeden zapis na wiersz
-    }
-
-    return 0;
-}
-*/
-
+ * convert nauty graph to digraph6 string, including \0
+ */
 char* graph_to_d6(graph *g, int m, int n, char *dag_gcode)
-/* convert nauty graph to digraph6 string, including \0 */
 {
     int i,j,k;
     char *p,x;
     set *gj;
-    // size_t ii;
-
-    // ii = D6LEN(n)+3;
-
-    // DYNALLOC1(char,dag_gcode,dag_gcode_sz,ii,"graph_to_d6");
 
     p = dag_gcode;
     *p++ = '&';
@@ -205,7 +157,6 @@ char* graph_to_d6(graph *g, int m, int n, char *dag_gcode)
 
     if (k != 6) *p++ = (char)(BIAS6 + (x << k));
 
-    // *p++ = '\n';
     *p = '\0';
 
     return dag_gcode;
@@ -225,7 +176,7 @@ char* graph_to_d6(graph *g, int m, int n, char *dag_gcode)
  * The function uses global variables `dag_*`.
  */
 #include <nautinv.h>
-static inline void generate_canon_digraph(int m, int n)
+static INLINE void generate_canon_digraph(int m, int n)
 {
     DEFAULTOPTIONS_DIGRAPH(dag_options);
     dag_options.getcanon = TRUE;
@@ -337,9 +288,9 @@ char *d6_to_d6_upper(char *src, char *dst)
         return NULL;
     }
     EMPTYGRAPH( dag_upperg, dag_m, dag_n );
-    
+
     for (int i = 0; i < dag_n; ++i) dag_pos[dag_order[i]] = i;
-    
+
     for (int u = 0; u < dag_n; ++u) {
         set *row = GRAPHROW(dag_g, u, dag_m);
         int iu = dag_pos[u];

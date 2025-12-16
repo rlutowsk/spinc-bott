@@ -1,4 +1,3 @@
-#include "common.h"
 #include "dag.h"
 
 /*
@@ -11,7 +10,7 @@ int main(void) {
     int n;
     char line[MAXLINE]; // Buffer for reading input lines
     char d6[MAXLINE];
-    
+
     if (fgets(line, sizeof(line), stdin) == NULL) {
         return 0;
     }

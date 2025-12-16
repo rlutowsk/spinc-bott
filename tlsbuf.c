@@ -1,8 +1,6 @@
-#include "tlsbuf.h"
-
-#include <stdlib.h>
-#include <string.h>
 #include <omp.h>
+
+#include "tlsbuf.h"
 
 void buffer_init(OutputBuffer *buffer, size_t initial_capacity, FILE *out) {
     buffer->lines = malloc(initial_capacity * sizeof(char*));
@@ -58,10 +56,10 @@ void monitor_progress(unsigned long *progress_ptr, unsigned long total, FILE *st
     double now, pct, speed;
     char etabuf[256] = {0};
 
-    for (;;) {    
+    for (;;) {
         #pragma omp atomic read
             cur = *progress_ptr;
-        
+
         if (cur >= total) break;
 
         now = omp_get_wtime();

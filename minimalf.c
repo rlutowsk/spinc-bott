@@ -1,11 +1,11 @@
-#include "common.h"
+#include <omp.h>
+
+#include "bott.h"
 #include "bucket.h"
 #include "dag.h"
 #include "adjpack11.h"
 #include "parse_scaled.h"
 #include "tlsbuf.h"
-
-#include <omp.h>
 
 static void help(const char *progname) {
     fprintf(stderr,
@@ -71,8 +71,8 @@ static bool is_orbit_minimum(const key128_t *seedk) {
     // Queue holds NON-CANONICAL matrices (like orbitg.c)
     MatArray *q = matarray_create(dim);
 
-    vec_t initial_mat[dim], 
-          seed_can_mat[dim], 
+    vec_t initial_mat[dim],
+          seed_can_mat[dim],
           aux[dim],
           canon_neighbor[dim];
     key128_t k;
@@ -157,10 +157,9 @@ int main(int argc, char *argv[]) {
     // always zero the timer at start of main
     tic();
     // default settings
-    size_t lines_capacity = 100000; 
+    size_t lines_capacity = 100000;
     int num_shards = 256;
     int num_threads = omp_get_max_threads(); // default to max threads
-    int v = 0;
     bool unique = false;
 
     double time_start = omp_get_wtime();
@@ -171,7 +170,7 @@ int main(int argc, char *argv[]) {
     while ((opt = getopt(argc, argv, "l:n:j:vi:o:u")) != -1) {
         switch (opt) {
         case 'v':
-            ++v;
+            increase_verbosity();
             break;
         case 'j':
             num_threads = (ind_t)atoi(optarg);
@@ -213,9 +212,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // variables
-    verbosity_level = v;
-
     char *buffer = (char*)malloc(MAXLINE * lines_capacity * sizeof(char));
     assert(buffer != NULL);
 
@@ -248,7 +244,7 @@ int main(int argc, char *argv[]) {
     // Global dedup across orbits by CANONICAL key
     GHashBucket *g_canonical_set = NULL;
     if (unique) {
-        g_canonical_set = g_bucket_new_128(g_free, NULL, num_shards);
+        g_canonical_set = g_bucket_new_128(free, num_shards);
     }
 
     size_t batch_num = 0;
@@ -257,7 +253,7 @@ int main(int argc, char *argv[]) {
 
     #pragma omp parallel
     {
-        // *** Per thread buffer for output lines
+        // Per thread buffer for output lines
         OutputBuffer thread_buffer;
         buffer_init(&thread_buffer, 5000, out);
 
@@ -266,7 +262,7 @@ int main(int argc, char *argv[]) {
         for (;;) {
             double start = 0.0;
 
-            // *** Single thread reads a batch
+            // Single thread reads a batch
             #pragma omp single
             {
                 start = omp_get_wtime();
@@ -280,15 +276,15 @@ int main(int argc, char *argv[]) {
                 }
             }
 
-            // *** Barrier synchronizing — all see line_count
+            // Barrier synchronizing — all see line_count
             #pragma omp barrier
 
             if (line_count == 0) {
-                // *** End of data – exit per-thread loop
+                // End of data – exit per-thread loop
                 break;
             }
 
-            // *** Processing batch – each thread operates on its own buffer
+            // Processing batch – each thread operates on its own buffer
             double comp_start = omp_get_wtime();
 
             size_t local_reps = 0;
@@ -322,7 +318,7 @@ int main(int argc, char *argv[]) {
                 }
             }
 
-            // *** Update global count once per batch (after reduction)
+            // Update global count once per batch (after reduction)
             #pragma omp atomic
             num_of_reps += local_reps;
 
@@ -335,7 +331,7 @@ int main(int argc, char *argv[]) {
                 line_count = 0;
             }
 
-            // *** Closure of batch (not always necessary, but keeps things tidy)
+            // Closure of batch (not always necessary, but keeps things tidy)
             #pragma omp barrier
         }
 
@@ -349,7 +345,7 @@ int main(int argc, char *argv[]) {
 
     double time_end = omp_get_wtime();
     printlog(1, "Times. Reading: %.3fs. Computations: %.3fs. Ratio: %.4f. Total: %.3fs. Ratio: %.4f", read_time, comp_time, comp_time/(read_time+comp_time), time_end - time_start, comp_time/(time_end - time_start));
-    printlog(1, "Done. Found %lu representatives", num_of_reps); //g_bucket_size(g_canonical_set));
+    printlog(1, "Done. Found %lu representatives", num_of_reps);
 
     if (g_canonical_set) {
         g_bucket_destroy(g_canonical_set);

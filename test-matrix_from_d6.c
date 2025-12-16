@@ -1,7 +1,6 @@
-#include "common.h"
 #include "dag.h"
 #include "adjpack11.h"
-#include "d6pack11.h"  // for d6pack_decode
+#include "d6pack11.h"
 
 void print_key_bits(const key128_t *k, const char *label) {
     printf("%s: ", label);
@@ -24,7 +23,7 @@ int matrix_from_d6_1(char *s, vec_t *mat, ind_t dim)
     }
 
     n = graphsize(s);
-    
+
     if (n <= 0 || n > dim) {
         return -1;
     }
@@ -33,12 +32,10 @@ int matrix_from_d6_1(char *s, vec_t *mat, ind_t dim)
 
     x = 0;
     p = s + 1 + SIZELEN(n);
-    // p = s + SIZELEN(n);
 
     k = 1;
     for (i = 0; i < n; ++i)
     {
-        // mat[i] = 0;
         for (j = 0; j < n; ++j)
         {
             if (--k == 0)
@@ -46,12 +43,7 @@ int matrix_from_d6_1(char *s, vec_t *mat, ind_t dim)
                 k = 6;
                 x = *(p++) - BIAS6;
             }
-            
-            // if ((x & TOPBIT6))
-            // {
-            //     mat[i] |= (1ULL << j);
-            // }
-            
+
             mat[i] |= (vec_t)((x & TOPBIT6)!=0) << j;
             x <<= 1;
         }
@@ -131,6 +123,6 @@ int main(void) {
     printf("    matrix_from_d6_1:  %.3f\n", t_matrix_from_d6_1/1e6);
     printf("    matrix_from_d6_2:  %.3f\n", t_matrix_from_d6_2/1e6);
     printf("=== [matrix_from_d6] all tests completed ===\n");
-   
+
     return 0;
 }

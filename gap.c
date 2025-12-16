@@ -82,7 +82,7 @@ Obj BottPrint(Obj self)
     if (initialized()) {
         for (i=0; i<dim; i++) {
             for (j=0; j<dim; j++) {
-                printf("%c", c[C(mat[i],dim,j)]);
+                printf("%c", c[C(mat[i],j)]);
             }
             printf("\n");
         }
@@ -110,7 +110,7 @@ Obj PLIST_MAT(vec_t *mat, ind_t dim)
 
         for (j=0, k=0; k<len && j<dim; ) {
             // increment j after checking
-            if (C(mat[i],dim,j++)) {
+            if (C(mat[i],j++)) {
                 // if here, the j value is already incremented
                 SET_ELM_PLIST( row, ++k, INTOBJ_INT(j));
             }
@@ -151,7 +151,7 @@ Obj OBJ_MAT(vec_t *mat, ind_t dim)
         SET_LEN_PLIST(row, dim);
 
         for (j=0; j<dim; j++) {
-            SET_ELM_PLIST( row, j+1, INTOBJ_INT(C(mat[i],dim,j)));
+            SET_ELM_PLIST( row, j+1, INTOBJ_INT(C(mat[i],j)));
         }
         SET_ELM_PLIST(M, i+1, row );
         CHANGED_BAG(M);

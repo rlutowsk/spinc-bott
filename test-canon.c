@@ -1,4 +1,3 @@
-#include "common.h"
 #include "dag.h"
 #include "adjpack11.h"
 #include "d6pack11.h"  // for d6pack_decode
