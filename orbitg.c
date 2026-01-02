@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
     while ((opt = getopt(argc, argv, "vhn:i:o:t:m:")) != -1) {
         switch (opt) {
         case 'v':
-            //++v;
+            ++v;
             increase_verbosity();
             break;
         case 'n':

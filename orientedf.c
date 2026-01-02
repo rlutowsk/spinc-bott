@@ -13,6 +13,7 @@ int main(void) {
         // 1. Determine the number of vertices (n) from the graph6 string.
         n = graphsize(s);
         if (n == 0) {
+            fprintf(stderr, "Invalid graph6 string: %s", s);
             continue; // Skip invalid or empty lines
         }
         matrix_from_d6(s, mat, n);
