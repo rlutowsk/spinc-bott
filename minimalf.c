@@ -231,8 +231,8 @@ int main(int argc, char *argv[]) {
     omp_set_num_threads(num_threads);
 
     if (!fgets(buffer, MAXLINE, in)) {
-        fprintf(stderr, "error reading input\n");
-        exit(1);
+        fprintf(stderr, "got empty input, quitting ...\n");
+        exit(0);
     }
     // lines[line_count++] = buffer;
     // lines[0] points to buffer anyway
@@ -249,6 +249,7 @@ int main(int argc, char *argv[]) {
 
     size_t batch_num = 0;
     size_t num_of_reps = 0;
+    size_t total_lines_read = 0;
     double read_time = 0, comp_time = 0;
 
     #pragma omp parallel
@@ -271,9 +272,10 @@ int main(int argc, char *argv[]) {
                 }
                 read_time += omp_get_wtime() - start;
 
-                if (line_count != 0) {
-                    printlog(2, "Processing batch %zu; reps found: %zu.", ++batch_num, num_of_reps);
-                }
+                total_lines_read += line_count;
+                //if (line_count != 0) {
+                //    printlog(2, "Processing batch %zu; reps found: %zu.", ++batch_num, num_of_reps);
+                //}
             }
 
             // Barrier synchronizing — all see line_count
@@ -309,7 +311,7 @@ int main(int argc, char *argv[]) {
 
                         if (g_bucket_insert_copy128(g_canonical_set, &seed_can_key)) {
                             ++local_reps;
-                            buffer_add(&thread_buffer, line);   // *** per-wątek buf
+                            buffer_add(&thread_buffer, line);   // *** per-thread buf
                         }
                     } else {
                         ++local_reps;
@@ -322,6 +324,9 @@ int main(int argc, char *argv[]) {
             #pragma omp atomic
             num_of_reps += local_reps;
 
+            // flush thread buffer, since it depends on buffer variable, which is overwritten on every input read
+            buffer_flush(&thread_buffer);
+
             // *** All threads done computing
             #pragma omp barrier
 
@@ -329,6 +334,8 @@ int main(int argc, char *argv[]) {
             {
                 comp_time += omp_get_wtime() - comp_start;
                 line_count = 0;
+                printlog(2, "Processed batch %zu; reps found: %zu.", ++batch_num, num_of_reps);
+
             }
 
             // Closure of batch (not always necessary, but keeps things tidy)
@@ -345,7 +352,7 @@ int main(int argc, char *argv[]) {
 
     double time_end = omp_get_wtime();
     printlog(1, "Times. Reading: %.3fs. Computations: %.3fs. Ratio: %.4f. Total: %.3fs. Ratio: %.4f", read_time, comp_time, comp_time/(read_time+comp_time), time_end - time_start, comp_time/(time_end - time_start));
-    printlog(1, "Done. Found %lu representatives", num_of_reps);
+    printlog(1, "Done. Read %lu elements. Found %lu representatives", total_lines_read, num_of_reps);
 
     if (g_canonical_set) {
         g_bucket_destroy(g_canonical_set);
