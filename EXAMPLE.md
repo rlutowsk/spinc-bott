@@ -37,13 +37,13 @@ cat data/8-bott-orientable.d6 | ./spincf > data/8-bott-spinc.d6
 Alternatively
 
 ```bash
-./mats -d 8 | ./canonicalg | ./uniqueg > data/8-bott-spinc.d6
+./mats -d 8 | ./canonicalg | ./uniqueg | ./minimalf -o data/8-bott-spinc.d6
 ```
 
 Alternatively
 
 ```bash
-./backtrack -d 8 | ./canonicalg | ./uniqueg > data/8-bott-spinc.d6
+./backtrack -d 8 | ./canonicalg | ./uniqueg | ./minimalf -o data/8-bott-spinc.d6
 ```
 
 ## Spin real Bott manifolds
